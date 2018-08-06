@@ -24,6 +24,8 @@ public class SFTPClient {
     static String ip;
     static int port;
     
+    static boolean validAuth = false;
+    
     // static String[] args = new String[]{"localhost", "6789"};
     
     public static void main(String[] args) throws Exception{
@@ -178,10 +180,8 @@ public class SFTPClient {
                             InputStreamReader(clientSocket.getInputStream()));
                                 
                 outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
-                
-                String response = inFromServer.readLine().substring(0, 1);;
-                
-                System.out.println(response);
+                validAuth = (inFromServer.readLine().substring(0, 1)).equals("!");
+                System.out.println(validAuth);
             } 
         }
     }
