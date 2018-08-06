@@ -116,13 +116,13 @@ public class SFTPClient {
         
         switch (mode) {
             case "USER":
-                user(commandArgs);
+                auth("USER",commandArgs);
                 break;
             case "ACCT":
-                acct(commandArgs);
+                auth("ACCT",commandArgs);
                 break;
             case "PASS":
-                pass(commandArgs);
+                auth("AUTH",commandArgs);
                 break;
             case "TYPE":
                 break;
@@ -145,10 +145,27 @@ public class SFTPClient {
         }
     }
     
-    public static void user(String[] commandArgs) throws Exception{
+    public static void auth(String mode, String[] commandArgs) throws Exception{
+ 
         if (commandArgs.length != 2){
-            System.out.println("ERROR: expected " + commandArgs.length +
-                    " arguments, 2 needed. Require USER user-id");
+            String argsError = null;
+            
+            switch (mode) {
+                case "USER":
+                    argsError = "USER user-id";
+                    break;
+                case "ACCT":
+                    argsError = "ACCT account";
+                    break;
+                case "PASS":
+                    argsError = "PASS password";
+                    break;
+                default:
+                    break;
+            }
+            
+            System.out.println("ERROR: found " + (commandArgs.length-1) +
+                    " arguments, 1 needed. Command format is: " + argsError);
         } else {
             
             try (Socket clientSocket = new Socket("localhost", 6789)) {
@@ -160,57 +177,9 @@ public class SFTPClient {
                         new BufferedReader(new
                             InputStreamReader(clientSocket.getInputStream()));
                                 
-                outToServer.writeBytes("USER " + commandArgs[1] + '\n');
+                outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
                 
-                String response = inFromServer.readLine();
-                
-                System.out.println(response);
-            } 
-        }
-    }
-    
-    public static void acct(String[] commandArgs) throws Exception{
-        if (commandArgs.length != 2){
-            System.out.println("ERROR: expected " + commandArgs.length +
-                    " arguments, 2 needed. Require ACCT account");
-        } else {
-            
-            try (Socket clientSocket = new Socket("localhost", 6789)) {
-                
-                DataOutputStream outToServer =
-                        new DataOutputStream(clientSocket.getOutputStream());
-                
-                BufferedReader inFromServer =
-                        new BufferedReader(new
-                            InputStreamReader(clientSocket.getInputStream()));
-                                
-                outToServer.writeBytes("ACCT " + commandArgs[1] + '\n');
-                
-                String response = inFromServer.readLine();
-                
-                System.out.println(response);
-            } 
-        }
-    }
-    
-    public static void pass(String[] commandArgs) throws Exception{
-        if (commandArgs.length != 2){
-            System.out.println("ERROR: expected " + commandArgs.length +
-                    " arguments, 2 needed. Require PASS password");
-        } else {
-            
-            try (Socket clientSocket = new Socket("localhost", 6789)) {
-                
-                DataOutputStream outToServer =
-                        new DataOutputStream(clientSocket.getOutputStream());
-                
-                BufferedReader inFromServer =
-                        new BufferedReader(new
-                            InputStreamReader(clientSocket.getInputStream()));
-                                
-                outToServer.writeBytes("PASS " + commandArgs[1] + '\n');
-                
-                String response = inFromServer.readLine();
+                String response = inFromServer.readLine().substring(0, 1);;
                 
                 System.out.println(response);
             } 
