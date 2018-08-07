@@ -38,7 +38,7 @@ public class SFTPServer {
 	    
 	    clientSentence = inFromClient.readLine(); 
 	    
-	    capitalizedSentence = "!" + clientSentence.toUpperCase() + '\n'; 
+	    capitalizedSentence = "-" + clientSentence.toUpperCase() + '\n'; 
 	    
 	    outToClient.writeBytes(capitalizedSentence); 
         } 

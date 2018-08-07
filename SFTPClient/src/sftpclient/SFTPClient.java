@@ -25,9 +25,7 @@ public class SFTPClient {
     static int port;
     
     static boolean validAuth = false;
-    
-    // static String[] args = new String[]{"localhost", "6789"};
-    
+        
     public static void main(String[] args) throws Exception{
         // TODO code application logic here
         //SFTPClient client = new SFTPClient();
@@ -53,35 +51,8 @@ public class SFTPClient {
                System.out.println("Connection refused. Server may not be online."); 
             };
         } else {
-            System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments IP PORT");
+            System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: IP PORT");
         }
-        
-//        String sentence; 
-//        String modifiedSentence; 
-//	
-//        BufferedReader inFromUser = 
-//	    new BufferedReader(new InputStreamReader(System.in)); 
-//	
-//        Socket clientSocket = new Socket("localhost", 6789); 
-//        
-//        DataOutputStream outToServer = 
-//	    new DataOutputStream(clientSocket.getOutputStream()); 
-//	
-//        
-//	BufferedReader inFromServer = 
-//	    new BufferedReader(new
-//		InputStreamReader(clientSocket.getInputStream())); 
-//	
-//        sentence = inFromUser.readLine(); 
-//	
-//        outToServer.writeBytes(sentence + '\n'); 
-//	
-//        modifiedSentence = inFromServer.readLine(); 
-//	
-//        System.out.println("FROM SERVER: " + modifiedSentence); 
-//	
-//        clientSocket.close(); 
-        
     }
     
     public static String[] selectMode() throws Exception{
@@ -103,12 +74,7 @@ public class SFTPClient {
             System.out.println("Commands available: "
                     + "\"USER\", \"ACCT\", \"PASS\", \"TYPE\", \"LIST\","
                     + "\"CDIR\", \"KILL\", \"NAME\", \"DONE\", \"RETR\", \"STOR\"");
-        }
-        
-        for (int i = 1; i < commands.length; i++){
-            System.out.println(commands[i]);
-        }
-        
+        }        
         return commands;
     }
     
@@ -127,6 +93,11 @@ public class SFTPClient {
                 auth("AUTH",commandArgs);
                 break;
             case "TYPE":
+                if (validAuth){
+                    type(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "LIST":
                 break;
@@ -166,23 +137,54 @@ public class SFTPClient {
                     break;
             }
             
-            System.out.println("ERROR: found " + (commandArgs.length-1) +
-                    " arguments, 1 needed. Command format is: " + argsError);
+            System.out.println("ARG ERROR: found " + (commandArgs.length-1) +
+                    " arguments, 1 needed. Command format: " + argsError);
         } else {
-            
-            try (Socket clientSocket = new Socket("localhost", 6789)) {
-                
-                DataOutputStream outToServer =
-                        new DataOutputStream(clientSocket.getOutputStream());
-                
-                BufferedReader inFromServer =
-                        new BufferedReader(new
-                            InputStreamReader(clientSocket.getInputStream()));
+            try (Socket clientSocket = new Socket(ip, port)) {
+                DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                                 
                 outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
-                validAuth = (inFromServer.readLine().substring(0, 1)).equals("!");
-                System.out.println(validAuth);
+                String serverResponse = inFromServer.readLine();
+                
+                switch (serverResponse.substring(0, 1)) {
+                    case "!":
+                        validAuth = true;
+                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        break;
+                    case "+":
+                    case "-":
+                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        break;
+                    default:
+                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
+                        break;
+                }
             } 
         }
+    }
+    
+    public static void type(String[] commandArgs) throws Exception{
+        if ("A".equals(commandArgs[1]) || "B".equals(commandArgs[1]) || "C".equals(commandArgs[1])){
+            try (Socket clientSocket = new Socket(ip, port)) {
+                DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
+                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                                
+                outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
+                String serverResponse = inFromServer.readLine();
+                
+                switch (serverResponse.substring(0, 1)) {
+                    case "+":
+                    case "-":
+                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        break;
+                    default:
+                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
+                        break;
+                }
+            } 
+        } else {
+            System.out.println("ARG ERROR: Invalid arguments. Command format: TYPE { A | B | C }");
+        }   
     }
 }
