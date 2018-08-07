@@ -1,7 +1,10 @@
 package sftpserver;
 
 import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.Arrays;
+import java.util.*;
 
 /*
  * Auth.txt File Format
@@ -13,7 +16,7 @@ import java.util.Arrays;
  */
 
 /**
- *
+ *  TO DO: USER CLASS
  * @author tofutaco
  */
 public class Auth {
@@ -23,7 +26,8 @@ public class Auth {
     Boolean accountVerification = false;
     Boolean passwordVerification = false;
     
-    String[] userDetails = {"", "", ""};
+    List<String[]> activeUsers = new ArrayList<>();
+    String[] userDetails = {"", "", "", "", "", "", "", ""}; // ip, port, userVerification, account, password 
     
     public Auth(){
 
@@ -42,10 +46,11 @@ public class Auth {
         }
     }
     
-    public String user(String userText) throws Exception{
+    public String user(String userText, Socket connectionSocket) throws Exception{
         File file = new File("auth.txt");
         BufferedReader reader = null;
         String text;
+        String response = null;
         
         System.out.println("USER");
         
@@ -58,10 +63,14 @@ public class Auth {
             
             while ((text = reader.readLine()) != null) {
                 System.out.println(text);
-                userDetails = text.split(" ", -1);
-                if (userDetails[0].equals(userText)){
+                String temp = ((((InetSocketAddress) connectionSocket.getRemoteSocketAddress()).getAddress()).toString().replace("/","") +
+                        " " + ((InetSocketAddress) connectionSocket.getRemoteSocketAddress()).getPort() + " " + text);
+                
+                userDetails = temp.split(" ", -1);
+                if (userDetails[2].equals(userText)){
                     userVerification = true;
-                    System.out.println(Arrays.toString(userDetails));
+                    activeUsers.add(userDetails);
+                    System.out.println(activeUsers);
                     break;
                 }
             }
@@ -78,23 +87,26 @@ public class Auth {
                 System.out.println("IO Exception on file close");
             }
         }
-        
-        String response = null;
-        
+                
         if (!userVerification){
             System.out.println("NO USER FOUND");
             return "-Invalid user-id, try again";
         } else {
-            if ("".equals(userDetails[1]) && "".equals(userDetails[2])){
+            if ("".equals(userDetails[3]) && "".equals(userDetails[3])){
                 System.out.println("No Account/Password required");
                 accountVerification = true;
                 passwordVerification = true;
                 response = "!" + userDetails[0] + " logged in";
-            } else if (userDetails[1] != null || userDetails[2] != null){
+            } else if (userDetails[3] != null || userDetails[4] != null){
                 System.out.println("Account/Password required");
                 response = "+User-id valid, send account and password";
             }
         }
         return response;
+    }
+    
+    public String account(String accountText, Socket connectionSocket) throws Exception {
+        
+        return "0";
     }
 }

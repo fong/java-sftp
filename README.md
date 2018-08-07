@@ -4,7 +4,7 @@ List of Features
 
 ||   Client   |   Server   |
 |--|:----------:|:----------:|
-|USER|Y|N|
+|USER|Y|Y|
 |ACCT|Y|N|
 |PASS|Y|N|
 |TYPE|Y|N|

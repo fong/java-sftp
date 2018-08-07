@@ -51,7 +51,7 @@ public class SFTPServer {
 	    
 	    clientSentence = inFromClient.readLine(); 
 	    
-            String response = auth.user(clientSentence.split(" ")[1]);
+            String response = auth.user(clientSentence.split(" ")[1], connectionSocket);
             
 	    capitalizedSentence = response + '\n'; 
 	    
