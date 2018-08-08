@@ -97,6 +97,11 @@ public class SFTPClient {
                 }
                 break;
             case "LIST":
+                if (validAuth){
+                    list(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "CDIR":
                 break;
@@ -147,11 +152,11 @@ public class SFTPClient {
                 switch (serverResponse.substring(0, 1)) {
                     case "!":
                         validAuth = true;
-                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        System.out.println(serverResponse);
                         break;
                     case "+":
                     case "-":
-                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        System.out.println(serverResponse);
                         break;
                     default:
                         System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
@@ -166,16 +171,16 @@ public class SFTPClient {
             try (Socket clientSocket = new Socket(ip, port)) {
                 DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
                 BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));                         
-                outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
+                outToServer.writeBytes("TYPE " + commandArgs[1] + '\n');
                 String serverResponse = inFromServer.readLine();
                 
                 switch (serverResponse.substring(0, 1)) {
                     case "+":
                         type = commandArgs[1];
-                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        System.out.println(serverResponse);
                         break;
                     case "-":
-                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        System.out.println(serverResponse);
                         break;
                     default:
                         System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
@@ -185,5 +190,37 @@ public class SFTPClient {
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: TYPE { A | B | C }");
         }   
+    }
+    
+    public static void list(String[] commandArgs) throws Exception{
+        if ((commandArgs.length == 3 || commandArgs.length == 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){
+            try (Socket clientSocket = new Socket(ip, port)) {
+                DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
+                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                
+                if (commandArgs.length == 2){    
+                    outToServer.writeBytes("LIST " + commandArgs[1] + '\n');
+                } else {
+                    outToServer.writeBytes("LIST " + commandArgs[1] + " " + commandArgs[2] + '\n');
+                }
+                
+                String serverResponse = inFromServer.readLine();
+                
+                switch (serverResponse.substring(0, 1)) {
+                    case "+":
+                        String res = serverResponse.replace("\\r\\n", "\n");
+                        System.out.println(res);
+                        break;
+                    case "-":
+                        System.out.println(serverResponse);
+                        break;
+                    default:
+                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
+                        break;
+                }
+            } 
+        } else {
+            System.out.println("ARG ERROR: Invalid arguments. Command format: LIST { F | V } directory-path");
+        }
     }
 }

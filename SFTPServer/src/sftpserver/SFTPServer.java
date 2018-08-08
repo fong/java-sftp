@@ -7,7 +7,9 @@ package sftpserver;
 
 import java.io.*; 
 import java.net.*; 
+import java.nio.file.*;
 import java.util.Arrays;
+import java.util.Date;
 
 /**
  *
@@ -21,6 +23,9 @@ public class SFTPServer {
      */
     
     static String mode;
+    static String list;
+    static String root;
+    static String directory = "/";
     static Auth auth = new Auth();
     
     public static void main(String[] args) throws Exception {
@@ -35,10 +40,11 @@ public class SFTPServer {
 //            String filePath = br.readLine(); 
 //            authOK = auth.setAuthPath(filePath);
 //        }
-
+    
         // Program argument authentication text file
-        if (args.length == 1){
+        if (args.length == 2){
             authOK = auth.setAuthPath(args[0]);
+            root = args[1];
         } else {
             System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: IP PORT");
         }
@@ -49,6 +55,11 @@ public class SFTPServer {
 	ServerSocket welcomeSocket = new ServerSocket(6789); 
         
         System.out.println("Socket Started...");
+        
+//        Iterable<Path> dirs = FileSystems.getDefault().getRootDirectories();
+//        for (Path name: dirs) {
+//            System.err.println(name);
+//        }
         
 	while(true) { 
 	    
@@ -63,12 +74,12 @@ public class SFTPServer {
 		new DataOutputStream(socket.getOutputStream()); 
 	    
 	    clientCmd = inFromClient.readLine().split(" "); 
+            System.out.println(Arrays.toString(clientCmd));
 	    
             String response = enterMode(clientCmd, socket);
-                        
-	    capitalizedSentence = response + '\n'; 
-	    
-	    outToClient.writeBytes(capitalizedSentence); 
+            
+            capitalizedSentence = response + '\n'; 
+            outToClient.writeBytes(capitalizedSentence); 
         } 
     }
     
@@ -96,7 +107,11 @@ public class SFTPServer {
                     return type(commandArgs[1]);
                 }
             case "LIST":
-                break;
+                if (!auth.getIP(socket).equals(auth.ip)){
+                    return "Uh oh! Someone is using the FTP server right now.";
+                } else {                    
+                    return list(commandArgs);
+                }
             case "CDIR":
                 break;
             case "KILL":
@@ -115,6 +130,7 @@ public class SFTPServer {
         return "COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs);
     }
     
+    // TYPE { A | B | C }        
     public static String type(String type){
         if (null == type){
             return "-Type not valid";
@@ -131,5 +147,71 @@ public class SFTPServer {
             default:
                 return "-Type not valid";
         }
+    }
+    
+    // LIST { F | V } directory-path
+    public static String list(String[] args){
+        
+        directory = "/";
+        list = args[1];
+        String response = null;
+        
+        if (args.length == 3){  
+            directory = "/" + args[2];
+        }
+        
+        if ("F".equals(list)){
+            Path dir = Paths.get(root + directory);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)){
+                response = "+" + directory + "\\r\\n";
+                for (Path filePath: stream) {
+                    response += filePath.getFileName() + "\\r\\n";
+                }                
+            } catch (IOException | DirectoryIteratorException x) {
+                // IOException can never be thrown by the iteration.
+                // In this snippet, it can only be thrown by newDirectoryStream.
+                System.err.println(x);
+                response = "-" + x;
+            }
+        } else if ("V".equals(list)){
+            Path dir = Paths.get(root + directory);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)){
+                
+                response = "+" + directory + "\\r\\n";
+                
+                response += String.format("%-40s%-5s%-10s%-30s", "|Name", "|R/W","|Size", "|Date") + "|" + "\\r\\n";
+                
+                for (Path filePath: stream) {
+                    File file = new File(filePath.toString());
+                    String rw = "";
+                    
+                    if (file.canRead()){
+                        rw += "R";
+                    }
+                    
+                    if (file.canWrite()){
+                        if ("R".equals(rw)){
+                            rw += "/";
+                        }
+                        rw += "W";
+                    }
+                    
+                    response += String.format("%-40s", "|" + file.getName());
+                    //response += file.canRead() + "\t|";
+                    response += String.format("%-5s", "|" + rw);
+                    response += String.format("%-10s", "|" + file.length()/1000 + " kB");
+                    response += String.format("%-30s", "|" + new Date(file.lastModified()));
+                    response += "|\\r\\n";
+                }
+                                
+            } catch (IOException | DirectoryIteratorException x) {
+                // IOException can never be thrown by the iteration.
+                // In this snippet, it can only be thrown by newDirectoryStream.
+                System.err.println(x);
+                response = "-" + x;
+            }
+        }
+        
+        return response;
     }
 }

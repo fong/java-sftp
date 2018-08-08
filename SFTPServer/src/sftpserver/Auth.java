@@ -112,7 +112,12 @@ public class Auth {
     }
     
     public String acct(String accountText) throws Exception {
-        accountVerification = false;
+        //accountVerification = false;
+        if ("".equals(accounts[0]) && !passwordVerification){
+            accountVerification = true;
+            return "+Account valid, send password";
+        }
+        
         for (String account: accounts){
             if (account.equals(accountText)){
                 accountVerification = true;
@@ -127,7 +132,12 @@ public class Auth {
     }
     
      public String pass(String passText) throws Exception {
-         passwordVerification = false;
+        if ("".equals(password) && !accountVerification){
+            passwordVerification = true;
+            return "+Send account";
+        }
+         
+        //passwordVerification = false;
         if (password.equals(passText)){
             passwordVerification = true;
             if (accountVerification){          
