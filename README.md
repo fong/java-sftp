@@ -5,8 +5,8 @@ List of Features
 ||   Client   |   Server   |
 |--|:----------:|:----------:|
 |USER|Y|Y|
-|ACCT|Y|N|
-|PASS|Y|N|
+|ACCT|Y|Y|
+|PASS|Y|Y|
 |TYPE|Y|N|
 |LIST|N|N|
 |CDIR|N|N|

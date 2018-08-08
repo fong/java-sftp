@@ -26,7 +26,8 @@ public class SFTPServer {
     public static void main(String[] args) throws Exception {
         // TODO code application logic here
         boolean authOK = false;
-//        
+        
+//      // CLI authentication text file  
 //        while (!authOK){
 //            System.out.println("Please enter path to authentication file (auth.txt): ");
 //            System.out.print("> ");
@@ -35,6 +36,7 @@ public class SFTPServer {
 //            authOK = auth.setAuthPath(filePath);
 //        }
 
+        // Program argument authentication text file
         if (args.length == 1){
             authOK = auth.setAuthPath(args[0]);
         } else {
@@ -88,7 +90,11 @@ public class SFTPServer {
                     return auth.pass(commandArgs[1]);
                 }
             case "TYPE":
-                break;
+                if (!auth.getIP(socket).equals(auth.ip)){
+                    return "Uh oh! Someone is using the FTP server right now.";
+                } else {                    
+                    return type(commandArgs[1]);
+                }
             case "LIST":
                 break;
             case "CDIR":
@@ -106,6 +112,24 @@ public class SFTPServer {
             default:
                 break;
         }
-        return Arrays.toString(commandArgs);
+        return "COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs);
+    }
+    
+    public static String type(String type){
+        if (null == type){
+            return "-Type not valid";
+        } else switch (type) {
+            case "A":
+                type = "A";
+                return "+Using Ascii mode";
+            case "B":
+                type = "B";
+                return "+Using Binary mode";
+            case "C":
+                type = "C";
+                return "+Using Continuous mode";
+            default:
+                return "-Type not valid";
+        }
     }
 }

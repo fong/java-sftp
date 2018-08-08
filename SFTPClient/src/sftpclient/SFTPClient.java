@@ -20,7 +20,9 @@ public class SFTPClient {
     static int port;
     
     static boolean validAuth = false;
-        
+    
+    static String type;
+    
     public static void main(String[] args) throws Exception{
         // TODO code application logic here
         //SFTPClient client = new SFTPClient();
@@ -160,16 +162,18 @@ public class SFTPClient {
     }
     
     public static void type(String[] commandArgs) throws Exception{
-        if ("A".equals(commandArgs[1]) || "B".equals(commandArgs[1]) || "C".equals(commandArgs[1])){
+        if (commandArgs.length == 2){
             try (Socket clientSocket = new Socket(ip, port)) {
                 DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                                
+                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));                         
                 outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
                 String serverResponse = inFromServer.readLine();
                 
                 switch (serverResponse.substring(0, 1)) {
                     case "+":
+                        type = commandArgs[1];
+                        System.out.println(serverResponse.substring(1, serverResponse.length()));
+                        break;
                     case "-":
                         System.out.println(serverResponse.substring(1, serverResponse.length()));
                         break;
