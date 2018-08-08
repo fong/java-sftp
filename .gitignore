@@ -19,6 +19,8 @@
 *.tar.gz
 *.rar
 
+/SFTPServer/ftp/
+
 # NetBeans Project Files
 /SFTPClient/nbproject/
 /SFTPServer/nbproject/

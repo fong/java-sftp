@@ -184,26 +184,18 @@ public class SFTPServer {
                 for (Path filePath: stream) {
                     File file = new File(filePath.toString());
                     String rw = "";
-                    
-                    if (file.canRead()){
-                        rw += "R";
-                    }
-                    
+                                        
+                    if (file.canRead()) {rw += "R";}
                     if (file.canWrite()){
-                        if ("R".equals(rw)){
-                            rw += "/";
-                        }
+                        if ("R".equals(rw)){rw += "/";}
                         rw += "W";
                     }
-                    
                     response += String.format("%-40s", "|" + file.getName());
-                    //response += file.canRead() + "\t|";
                     response += String.format("%-5s", "|" + rw);
                     response += String.format("%-10s", "|" + file.length()/1000 + " kB");
                     response += String.format("%-30s", "|" + new Date(file.lastModified()));
                     response += "|\\r\\n";
-                }
-                                
+                }                    
             } catch (IOException | DirectoryIteratorException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
@@ -211,7 +203,6 @@ public class SFTPServer {
                 response = "-" + x;
             }
         }
-        
         return response;
     }
 }

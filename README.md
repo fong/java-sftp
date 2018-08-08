@@ -7,8 +7,8 @@ List of Features
 |USER|Y|Y|
 |ACCT|Y|Y|
 |PASS|Y|Y|
-|TYPE|Y|N|
-|LIST|N|N|
+|TYPE|Y|Y|
+|LIST|Y|Y|
 |CDIR|N|N|
 |KILL|N|N|
 |NAME|N|N|
