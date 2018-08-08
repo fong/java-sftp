@@ -85,7 +85,7 @@ public class SFTPClient {
                 auth("ACCT",commandArgs);
                 break;
             case "PASS":
-                auth("AUTH",commandArgs);
+                auth("PASS",commandArgs);
                 break;
             case "TYPE":
                 if (validAuth){

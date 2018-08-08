@@ -26,9 +26,11 @@ public class Auth {
     Boolean accountVerification = false;
     Boolean passwordVerification = false;
     
-    List<String[]> activeUsers = new ArrayList<>();
-    String[] userDetails = {"", "", "", "", "", "", "", ""}; // ip, port, userVerification, account, password 
-    
+    String user; // userVerification, account, password
+    String[] accounts;
+    String password; // userVerification, account, password
+    String ip;
+
     public Auth(){
 
     }
@@ -46,7 +48,7 @@ public class Auth {
         }
     }
     
-    public String user(String userText, Socket connectionSocket) throws Exception{
+    public String user(String userText, Socket socket) throws Exception{
         File file = new File("auth.txt");
         BufferedReader reader = null;
         String text;
@@ -63,14 +65,16 @@ public class Auth {
             
             while ((text = reader.readLine()) != null) {
                 System.out.println(text);
-                String temp = ((((InetSocketAddress) connectionSocket.getRemoteSocketAddress()).getAddress()).toString().replace("/","") +
-                        " " + ((InetSocketAddress) connectionSocket.getRemoteSocketAddress()).getPort() + " " + text);
+                String temp = text;
                 
-                userDetails = temp.split(" ", -1);
-                if (userDetails[2].equals(userText)){
+                String[] userDetails = temp.split(" ", -1);
+                user = userDetails[0];
+                accounts = userDetails[1].split("\\|");
+                password = userDetails[2];
+                
+                if (user.equals(userText)){
                     userVerification = true;
-                    activeUsers.add(userDetails);
-                    System.out.println(activeUsers);
+                    ip = getIP(socket);
                     break;
                 }
             }
@@ -89,24 +93,54 @@ public class Auth {
         }
                 
         if (!userVerification){
-            System.out.println("NO USER FOUND");
             return "-Invalid user-id, try again";
         } else {
-            if ("".equals(userDetails[3]) && "".equals(userDetails[3])){
-                System.out.println("No Account/Password required");
-                accountVerification = true;
+            if ("".equals(password)){
                 passwordVerification = true;
-                response = "!" + userDetails[0] + " logged in";
-            } else if (userDetails[3] != null || userDetails[4] != null){
-                System.out.println("Account/Password required");
-                response = "+User-id valid, send account and password";
             }
+            if (accounts.length <= 1){
+                accountVerification = true;
+            }
+                
+            if (passwordVerification && accountVerification){
+                response = "!" + user + " logged in";
+            } else {
+                response = "+User-id valid, send account and password";
+            }   
         }
         return response;
     }
     
-    public String account(String accountText, Socket connectionSocket) throws Exception {
-        
-        return "0";
+    public String acct(String accountText) throws Exception {
+        accountVerification = false;
+        for (String account: accounts){
+            if (account.equals(accountText)){
+                accountVerification = true;
+                if (passwordVerification){
+                    return "!Account valid, logged-in";
+                } else {
+                    return "+Account valid, send password";
+                }
+            }
+        }
+        return "-Invalid account, try again";
+    }
+    
+     public String pass(String passText) throws Exception {
+         passwordVerification = false;
+        if (password.equals(passText)){
+            passwordVerification = true;
+            if (accountVerification){          
+                return "!Account valid, logged-in";
+            } else {
+                return "+Send account";
+            }
+        } else {
+            return "-Wrong password, try again";
+        }
+    }
+    
+    public String getIP(Socket socket){
+        return (((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress()).toString().replace("/","");
     }
 }
