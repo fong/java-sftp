@@ -27,6 +27,8 @@ public class SFTPServer {
     static String root;
     static String directory = "/";
     static Auth auth = new Auth();
+    static BufferedReader inFromClient;
+    static DataOutputStream outToClient;
     
     public static void main(String[] args) throws Exception {
         // TODO code application logic here
@@ -66,12 +68,8 @@ public class SFTPServer {
             Socket socket = welcomeSocket.accept();
             socket.setReuseAddress(true);
 	    
-	    BufferedReader inFromClient = 
-		new BufferedReader(new
-		    InputStreamReader(socket.getInputStream())); 
-	    
-	    DataOutputStream  outToClient = 
-		new DataOutputStream(socket.getOutputStream()); 
+	    inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
+	    outToClient = new DataOutputStream(socket.getOutputStream()); 
 	    
 	    clientCmd = inFromClient.readLine().split(" "); 
             System.out.println(Arrays.toString(clientCmd));
@@ -150,11 +148,14 @@ public class SFTPServer {
     }
     
     // LIST { F | V } directory-path
-    public static String list(String[] args){
+    public static String list(String[] args) throws IOException{
         
         directory = "/";
         list = args[1];
         String response = null;
+        long totalFileSize = 0;
+        int nFiles = 0;
+        int nDirectories = 0;
         
         if (args.length == 3){  
             directory = "/" + args[2];
@@ -163,46 +164,61 @@ public class SFTPServer {
         if ("F".equals(list)){
             Path dir = Paths.get(root + directory);
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)){
-                response = "+" + directory + "\\r\\n";
+                outToClient.writeBytes("+" + directory + "\n");
                 for (Path filePath: stream) {
-                    response += filePath.getFileName() + "\\r\\n";
+                    outToClient.writeBytes(filePath.getFileName() + "\n");
                 }                
             } catch (IOException | DirectoryIteratorException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                response = "-" + x;
+                outToClient.writeBytes("-" + x + "\n");
             }
         } else if ("V".equals(list)){
-            Path dir = Paths.get(root + directory);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)){
+            Path dirPath = Paths.get(root + directory);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dirPath)){
                 
-                response = "+" + directory + "\\r\\n";
+                outToClient.writeBytes("+" + directory + "\n");
                 
-                response += String.format("%-40s%-5s%-10s%-30s", "|Name", "|R/W","|Size", "|Date") + "|" + "\\r\\n";
+                outToClient.writeBytes(String.format("%-50s%-4s%-4s%-10s%-30s", "|Name", "|DIR", "|R/W","|Size", "|Date") + "|\n");
                 
                 for (Path filePath: stream) {
                     File file = new File(filePath.toString());
                     String rw = "";
-                                        
+                    String dir = "";
+                           
+                    if (file.isDirectory()){
+                        dir = "DIR";
+                        nDirectories++;
+                    }
+                    if (file.isFile()) {
+                        totalFileSize += file.length();
+                        nFiles++;
+                    }
                     if (file.canRead()) {rw += "R";}
                     if (file.canWrite()){
                         if ("R".equals(rw)){rw += "/";}
                         rw += "W";
                     }
-                    response += String.format("%-40s", "|" + file.getName());
-                    response += String.format("%-5s", "|" + rw);
-                    response += String.format("%-10s", "|" + file.length()/1000 + " kB");
+                    response = "";
+                    response += String.format("%-50s", "|" + file.getName());
+                    response += String.format("%-4s", "|" + dir);
+                    response += String.format("%-4s", "|" + rw);
+                    response += "|" + String.format("%9s", file.length()/1000 + "kB");
                     response += String.format("%-30s", "|" + new Date(file.lastModified()));
-                    response += "|\\r\\n";
-                }                    
+                    response += "|\n";
+                    outToClient.writeBytes(response);
+                }
+                String stats = nFiles + " File(s)\t " +
+                                nDirectories + " Dir(s)\t " + totalFileSize/1000 + "kB Total File Size" + "\n";
+                outToClient.writeBytes(stats);
             } catch (IOException | DirectoryIteratorException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                response = "-" + x;
+                outToClient.writeBytes("-" + x + "\n");
             }
         }
-        return response;
+        return "\0";
     }
 }
