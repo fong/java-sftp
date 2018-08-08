@@ -160,26 +160,23 @@ public class SFTPServer {
         if (args.length == 3){  
             directory = "/" + args[2];
         }
-        
+                
         if ("F".equals(list)){
-            Path dir = Paths.get(root + directory);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)){
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory))){
                 outToClient.writeBytes("+" + directory + "\n");
                 for (Path filePath: stream) {
                     outToClient.writeBytes(filePath.getFileName() + "\n");
                 }                
-            } catch (IOException | DirectoryIteratorException x) {
+            } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                outToClient.writeBytes("-" + x + "\n");
+                outToClient.writeBytes("-" + x.toString() + "\n");
             }
-        } else if ("V".equals(list)){
-            Path dirPath = Paths.get(root + directory);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dirPath)){
-                
+        } else if ("V".equals(list)){            
+            //Path dirPath = Paths.get(root + directory);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory))){
                 outToClient.writeBytes("+" + directory + "\n");
-                
                 outToClient.writeBytes(String.format("%-50s%-4s%-4s%-10s%-30s", "|Name", "|DIR", "|R/W","|Size", "|Date") + "|\n");
                 
                 for (Path filePath: stream) {
@@ -212,11 +209,11 @@ public class SFTPServer {
                 String stats = nFiles + " File(s)\t " +
                                 nDirectories + " Dir(s)\t " + totalFileSize/1000 + "kB Total File Size" + "\n";
                 outToClient.writeBytes(stats);
-            } catch (IOException | DirectoryIteratorException x) {
+            } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                outToClient.writeBytes("-" + x + "\n");
+                outToClient.writeBytes("-" + x.toString() + "\n");
             }
         }
         return "\0";

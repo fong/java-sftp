@@ -149,18 +149,11 @@ public class SFTPClient {
                 outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
                 String serverResponse = inFromServer.readLine();
                 
-                switch (serverResponse.substring(0, 1)) {
-                    case "!":
-                        validAuth = true;
-                        System.out.println(serverResponse);
-                        break;
-                    case "+":
-                    case "-":
-                        System.out.println(serverResponse);
-                        break;
-                    default:
-                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
-                        break;
+                if ("!".equals(serverResponse.substring(0, 1))) {
+                    validAuth = true;
+                    System.out.println(serverResponse);
+                } else {
+                    System.out.println(serverResponse);
                 }
             } 
         }
@@ -204,7 +197,7 @@ public class SFTPClient {
                     outToServer.writeBytes("LIST " + commandArgs[1] + " " + commandArgs[2] + '\n');
                 }
                 
-                String serverResponse = inFromServer.readLine();
+                String serverResponse = "";
                 
                 while (!"\0".equals(serverResponse)){
                     serverResponse = inFromServer.readLine();
