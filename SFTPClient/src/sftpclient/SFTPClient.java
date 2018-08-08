@@ -203,19 +203,6 @@ public class SFTPClient {
                     serverResponse = inFromServer.readLine();
                     System.out.println(serverResponse);
                 };
-                
-//                switch (serverResponse.substring(0, 1)) {
-//                    case "+":
-//                        String res = serverResponse.replace("\\r\\n", "\n");
-//                        System.out.println(res);
-//                        break;
-//                    case "-":
-//                        System.out.println(serverResponse);
-//                        break;
-//                    default:
-//                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
-//                        break;
-//                }
             } 
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: LIST { F | V } directory-path");

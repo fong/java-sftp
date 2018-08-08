@@ -58,11 +58,6 @@ public class SFTPServer {
         
         System.out.println("Socket Started...");
         
-//        Iterable<Path> dirs = FileSystems.getDefault().getRootDirectories();
-//        for (Path name: dirs) {
-//            System.err.println(name);
-//        }
-        
 	while(true) { 
 	    
             Socket socket = welcomeSocket.accept();
@@ -74,14 +69,14 @@ public class SFTPServer {
 	    clientCmd = inFromClient.readLine().split(" "); 
             System.out.println(Arrays.toString(clientCmd));
 	    
-            String response = enterMode(clientCmd, socket);
+            String response = mode(clientCmd, socket);
             
             capitalizedSentence = response + '\n'; 
             outToClient.writeBytes(capitalizedSentence); 
         } 
     }
     
-    public static String enterMode(String[] commandArgs, Socket socket) throws Exception{
+    public static String mode(String[] commandArgs, Socket socket) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"        
         switch (commandArgs[0]) {
             case "USER":
@@ -111,7 +106,11 @@ public class SFTPServer {
                     return list(commandArgs);
                 }
             case "CDIR":
-                break;
+                if (!auth.getIP(socket).equals(auth.ip)){
+                    return "Uh oh! Someone is using the FTP server right now.";
+                } else {                    
+                    return cdir(commandArgs);
+                }
             case "KILL":
                 break;
             case "NAME":
@@ -177,7 +176,18 @@ public class SFTPServer {
             //Path dirPath = Paths.get(root + directory);
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory))){
                 outToClient.writeBytes("+" + directory + "\n");
-                outToClient.writeBytes(String.format("%-50s%-4s%-4s%-10s%-30s", "|Name", "|DIR", "|R/W","|Size", "|Date") + "|\n");
+                outToClient.writeBytes(String.format("%-54s%-4s%-10s%-30s", "|Name", "|R/W","|Size", "|Date") + "|\n");
+                
+                String line = "";
+                for (int w = 0; w <= 98; w++){
+                    if (w == 0 || w == 54 || w == 58 || w == 68 || w == 98){
+                        line += "|";
+                    } else {        
+                        line += "-";
+                    }
+                }
+                line += "\n";
+                outToClient.writeBytes(line);
                 
                 for (Path filePath: stream) {
                     File file = new File(filePath.toString());
@@ -199,7 +209,7 @@ public class SFTPServer {
                     }
                     response = "";
                     response += String.format("%-50s", "|" + file.getName());
-                    response += String.format("%-4s", "|" + dir);
+                    response += String.format("%-4s", dir);
                     response += String.format("%-4s", "|" + rw);
                     response += "|" + String.format("%9s", file.length()/1000 + "kB");
                     response += String.format("%-30s", "|" + new Date(file.lastModified()));
@@ -216,6 +226,10 @@ public class SFTPServer {
                 outToClient.writeBytes("-" + x.toString() + "\n");
             }
         }
+        return "\0";
+    }
+    
+    public static String cdir(String[] args) throws Exception{
         return "\0";
     }
 }
