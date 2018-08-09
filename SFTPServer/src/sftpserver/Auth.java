@@ -21,31 +21,18 @@ import java.util.*;
  */
 public class Auth {
     
-    String authFile;
-    Boolean userVerification = false;
-    Boolean accountVerification = false;
-    Boolean passwordVerification = false;
+    protected static String authFile;
+    protected static Boolean userVerification = false;
+    protected static Boolean accountVerification = false;
+    protected static Boolean passwordVerification = false;
     
-    String user; // userVerification, account, password
-    String[] accounts;
-    String password; // userVerification, account, password
-    String ip;
+    protected static String user; // userVerification, account, password
+    protected static String[] accounts;
+    protected static String password; // userVerification, account, password
+    protected static String ip;
 
-    public Auth(){
-
-    }
-    
-    public boolean setAuthPath(String filePathString){
-        File f = new File(filePathString);
-        if(f.exists() && !f.isDirectory()) { 
-            authFile = filePathString;
-            System.out.println("Found authentication file!");
-            return true;
-        } else {
-            authFile = null;
-            System.out.println("No authentication file found. Are you sure you have the right path?");
-            return false;
-        }
+    public Auth(String authFile){
+        this.authFile = authFile;
     }
     
     public String user(String userText, Socket socket) throws Exception{
@@ -64,17 +51,21 @@ public class Auth {
             reader = new BufferedReader(new FileReader(file));
             
             while ((text = reader.readLine()) != null) {
-                System.out.println(text);
                 String temp = text;
                 
                 String[] userDetails = temp.split(" ", -1);
+                System.out.println(Arrays.toString(userDetails));
                 user = userDetails[0];
                 accounts = userDetails[1].split("\\|");
                 password = userDetails[2];
                 
+                System.out.println(user);
+                System.out.println(Arrays.toString(accounts));
+                System.out.println(password);
+
                 if (user.equals(userText)){
                     userVerification = true;
-                    ip = getIP(socket);
+                    //ip = getIP(socket);
                     break;
                 }
             }
@@ -132,6 +123,10 @@ public class Auth {
     }
     
      public String pass(String passText) throws Exception {
+        System.out.println(user);
+        System.out.println(Arrays.toString(accounts));
+        System.out.println(password);
+         
         if ("".equals(password) && !accountVerification){
             passwordVerification = true;
             return "+Send account";

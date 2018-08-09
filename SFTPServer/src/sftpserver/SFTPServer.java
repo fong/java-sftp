@@ -26,7 +26,8 @@ public class SFTPServer {
     static String list;
     static String root;
     static String directory = "/";
-    static Auth auth = new Auth();
+    static String authFile;
+    // static Auth auth = new Auth();
     static BufferedReader inFromClient;
     static DataOutputStream outToClient;
     
@@ -45,10 +46,10 @@ public class SFTPServer {
     
         // Program argument authentication text file
         if (args.length == 2){
-            authOK = auth.setAuthPath(args[0]);
+            setAuthPath(args[0]);
             root = args[1];
         } else {
-            System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: IP PORT");
+            System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: AUTH-FILE FTP-ROOT-DIRECTORY");
         }
                         
         String[] clientCmd; 
@@ -61,7 +62,21 @@ public class SFTPServer {
 	while(true) { 
 	    
             Socket socket = welcomeSocket.accept();
-            new Thread(new Instance(socket, root)).start();
+            new Instance(socket, root, authFile).start();
         } 
+    }
+    
+        
+    public static boolean setAuthPath(String filePathString){
+        File f = new File(filePathString);
+        if(f.exists() && !f.isDirectory()) { 
+            authFile = filePathString;
+            System.out.println("Found authentication file!");
+            return true;
+        } else {
+            authFile = null;
+            System.out.println("No authentication file found. Are you sure you have the right path?");
+            return false;
+        }
     }
 }

@@ -14,47 +14,68 @@ import java.util.*;
  *
  * @author tofupudding
  */
-public class Instance implements Runnable{
+public class Instance extends Thread{
     
-    Socket socket;
+    protected Socket socket;
     
     String mode;
     String list;
     String root;
     String directory = "/";
-    Auth auth = new Auth();
+    protected static Auth auth;
     BufferedReader inFromClient;
     DataOutputStream outToClient;
     
     String[] clientCmd; 
     String capitalizedSentence;
     
-    boolean userVerification = false;
-    boolean accountVerification = false;
-    boolean passwordVerification = false;
+    // boolean userVerification = false;
+    // boolean accountVerification = false;
+    // boolean passwordVerification = false;
     
-    Instance(Socket socket, String root){
+    Instance(Socket socket, String root, String authFile){
         this.root = root;
         this.socket = socket;
+        Instance.auth = new Auth(authFile);
     }
     
+    @Override
     public void run(){
         while(true){
             try {
-            socket.setReuseAddress(true);
-	    
-	    inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
-	    outToClient = new DataOutputStream(socket.getOutputStream()); 
-	    
-	    clientCmd = inFromClient.readLine().split(" "); 
-            System.out.println(Arrays.toString(clientCmd));
-	    
-            String response = mode(clientCmd, socket);
+                socket.setReuseAddress(true);
+
+                inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
+                outToClient = new DataOutputStream(socket.getOutputStream()); 
+
+                clientCmd = inFromClient.readLine().split(" "); 
+                System.out.println(Arrays.toString(clientCmd));
+
+                String response = mode(clientCmd, socket);
+                capitalizedSentence = response + '\n';
+                outToClient.writeBytes(capitalizedSentence);
+            } catch (Exception e){
+                System.err.println(e);
+                e.printStackTrace();
+                break;
+            }
             
-            capitalizedSentence = response + '\n'; 
-            outToClient.writeBytes(capitalizedSentence);}
-            //socket.close();
-            catch (Exception e){}
+            String line;
+            while (true) {
+                try {
+                    line = inFromClient.readLine();
+                    if ((line == null) || line.equals("DONE")) {
+                        socket.close();
+                        return;
+                    } else {
+                        outToClient.writeBytes(line + "\n\r");
+                        outToClient.flush();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return;
+                }
+            }
         }
     }
     
@@ -62,7 +83,9 @@ public class Instance implements Runnable{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"        
         switch (commandArgs[0]) {
             case "USER":
-                return auth.user(commandArgs[1], socket);
+                String res = auth.user(commandArgs[1], socket);
+                System.out.println(res);
+                return res;
             case "ACCT":                  
                 return auth.acct(commandArgs[1]);
             case "PASS":
