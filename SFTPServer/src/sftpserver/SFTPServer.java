@@ -59,8 +59,7 @@ public class SFTPServer {
         
         System.out.println("Socket Started...");
         
-	while(true) { 
-	    
+	while(true) {
             Socket socket = welcomeSocket.accept();
             new Instance(socket, root, authFile).start();
         } 

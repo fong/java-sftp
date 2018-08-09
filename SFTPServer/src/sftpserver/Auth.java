@@ -29,13 +29,12 @@ public class Auth {
     protected static String user; // userVerification, account, password
     protected static String[] accounts;
     protected static String password; // userVerification, account, password
-    protected static String ip;
 
     public Auth(String authFile){
-        this.authFile = authFile;
+        Auth.authFile = authFile;
     }
     
-    public String user(String userText, Socket socket) throws Exception{
+    public String user(String userText) throws Exception{
         File file = new File("auth.txt");
         BufferedReader reader = null;
         String text;
@@ -54,18 +53,12 @@ public class Auth {
                 String temp = text;
                 
                 String[] userDetails = temp.split(" ", -1);
-                System.out.println(Arrays.toString(userDetails));
                 user = userDetails[0];
                 accounts = userDetails[1].split("\\|");
                 password = userDetails[2];
-                
-                System.out.println(user);
-                System.out.println(Arrays.toString(accounts));
-                System.out.println(password);
 
                 if (user.equals(userText)){
                     userVerification = true;
-                    //ip = getIP(socket);
                     break;
                 }
             }

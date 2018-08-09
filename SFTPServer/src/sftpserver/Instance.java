@@ -41,51 +41,42 @@ public class Instance extends Thread{
     
     @Override
     public void run(){
-        while(true){
-            try {
-                socket.setReuseAddress(true);
-
-                inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
-                outToClient = new DataOutputStream(socket.getOutputStream()); 
-
-                clientCmd = inFromClient.readLine().split(" "); 
-                System.out.println(Arrays.toString(clientCmd));
-
-                String response = mode(clientCmd, socket);
-                capitalizedSentence = response + '\n';
-                outToClient.writeBytes(capitalizedSentence);
-            } catch (Exception e){
-                System.err.println(e);
-                e.printStackTrace();
-                break;
-            }
+        boolean running = true;
+        
+        try {
+            socket.setReuseAddress(true);
+            inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));               
+            outToClient = new DataOutputStream(socket.getOutputStream());
+        } catch (Exception e) {
             
-            String line;
-            while (true) {
-                try {
-                    line = inFromClient.readLine();
-                    if ((line == null) || line.equals("DONE")) {
-                        socket.close();
-                        return;
-                    } else {
-                        outToClient.writeBytes(line + "\n\r");
-                        outToClient.flush();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return;
+        }
+        
+        while(running){
+            try {
+                clientCmd = inFromClient.readLine().split(" "); 
+                
+                if (clientCmd[0].equals("DONE")){
+                    System.out.println("Closing...");
+                    socket.close();
+                    running = false;
+                } else {
+                    String response = mode(clientCmd, socket);
+                    outToClient.writeBytes(response + '\n');
                 }
+            } catch (Exception e){
+                //e.printStackTrace();
+                //break;
             }
         }
+        System.out.println("Closed Thread");
+        return;
     }
     
     public String mode(String[] commandArgs, Socket socket) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"        
         switch (commandArgs[0]) {
             case "USER":
-                String res = auth.user(commandArgs[1], socket);
-                System.out.println(res);
-                return res;
+                return auth.user(commandArgs[1]);
             case "ACCT":                  
                 return auth.acct(commandArgs[1]);
             case "PASS":
@@ -99,8 +90,6 @@ public class Instance extends Thread{
             case "KILL":
                 break;
             case "NAME":
-                break;
-            case "DONE":
                 break;
             case "RETR":
                 break;
@@ -194,7 +183,7 @@ public class Instance extends Thread{
                     }
                     response = "";
                     response += String.format("%-50s", "|" + file.getName());
-                    response += String.format("%-4s", dir);
+                    response += String.format("%3s", dir);
                     response += String.format("%-4s", "|" + rw);
                     response += "|" + String.format("%9s", file.length()/1000 + "kB");
                     response += String.format("%-30s", "|" + new Date(file.lastModified()));
@@ -216,5 +205,10 @@ public class Instance extends Thread{
     
     public String cdir(String[] args) throws Exception{
         return "\0";
+    }
+    
+    public boolean done() throws Exception{
+        socket.close();
+        return false;
     }
 }

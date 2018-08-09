@@ -23,6 +23,10 @@ public class SFTPClient {
     
     static String type;
     
+    static Socket socket;
+    static DataOutputStream outToServer;
+    static BufferedReader inFromServer;
+    
     public static void main(String[] args) throws Exception{
         // TODO code application logic here
         //SFTPClient client = new SFTPClient();
@@ -31,11 +35,15 @@ public class SFTPClient {
         sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"};
         
         if (args.length == 2){
-            try {
-                ip = args[0];
-                port = Integer.parseInt(args[1]);
-                System.out.println("Client will connect to " + ip + " port " + port);
-                        
+            ip = args[0];
+            port = Integer.parseInt(args[1]);
+            
+            try{
+                socket = new Socket(ip, port);
+                outToServer =  new DataOutputStream(socket.getOutputStream());
+                inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
+                System.out.println("Client connected to " + ip + " port " + port);
+                
                 while(true){
                     System.out.print("> ");
                     String[] commandArgs = selectMode();
@@ -110,6 +118,7 @@ public class SFTPClient {
             case "NAME":
                 break;
             case "DONE":
+                outToServer.writeBytes("DONE" + '\n');
                 break;
             case "RETR":
                 break;
@@ -160,50 +169,41 @@ public class SFTPClient {
     }
     
     public static void type(String[] commandArgs) throws Exception{
-        if (commandArgs.length == 2){
-            try (Socket clientSocket = new Socket(ip, port)) {
-                DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));                         
-                outToServer.writeBytes("TYPE " + commandArgs[1] + '\n');
-                String serverResponse = inFromServer.readLine();
-                
-                switch (serverResponse.substring(0, 1)) {
-                    case "+":
-                        type = commandArgs[1];
-                        System.out.println(serverResponse);
-                        break;
-                    case "-":
-                        System.out.println(serverResponse);
-                        break;
-                    default:
-                        System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
-                        break;
-                }
-            } 
+        if (commandArgs.length == 2){                        
+            outToServer.writeBytes("TYPE " + commandArgs[1] + '\n');
+            String serverResponse = inFromServer.readLine();
+
+            switch (serverResponse.substring(0, 1)) {
+                case "+":
+                    type = commandArgs[1];
+                    System.out.println(serverResponse);
+                    break;
+                case "-":
+                    System.out.println(serverResponse);
+                    break;
+                default:
+                    System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
+                    break;
+            }
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: TYPE { A | B | C }");
         }   
     }
     
     public static void list(String[] commandArgs) throws Exception{
-        if ((commandArgs.length == 3 || commandArgs.length == 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){
-            try (Socket clientSocket = new Socket(ip, port)) {
-                DataOutputStream outToServer =  new DataOutputStream(clientSocket.getOutputStream());
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                
-                if (commandArgs.length == 2){    
-                    outToServer.writeBytes("LIST " + commandArgs[1] + '\n');
-                } else {
-                    outToServer.writeBytes("LIST " + commandArgs[1] + " " + commandArgs[2] + '\n');
-                }
-                
-                String serverResponse = "";
-                
-                while (!"\0".equals(serverResponse)){
-                    serverResponse = inFromServer.readLine();
-                    System.out.println(serverResponse);
-                };
-            } 
+        if ((commandArgs.length == 3 || commandArgs.length == 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){         
+            if (commandArgs.length == 2){    
+                outToServer.writeBytes("LIST " + commandArgs[1] + '\n');
+            } else {
+                outToServer.writeBytes("LIST " + commandArgs[1] + " " + commandArgs[2] + '\n');
+            }
+
+            String serverResponse = "";
+
+            while (!"\0".equals(serverResponse)){
+                serverResponse = inFromServer.readLine();
+                System.out.println(serverResponse);
+            };
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: LIST { F | V } directory-path");
         }
