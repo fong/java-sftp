@@ -1,3 +1,0 @@
-ONLYUSERNAME  
-TEST-USER  thisisapassword
-ACCOUNT-USER thisisanaccount thisisanotherpassword
