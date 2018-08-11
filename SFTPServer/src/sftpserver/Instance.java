@@ -8,6 +8,8 @@ package sftpserver;
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.*;
+import java.nio.file.attribute.*;
+import java.text.DateFormat;
 import java.util.*;
 
 /**
@@ -21,18 +23,16 @@ public class Instance extends Thread{
     String mode;
     String list;
     String root;
-    String directory = "/";
+    public static String restrictedDirectory = "/";
+    public static String directory = "/";
+    public static boolean cdirRestricted = false;
     protected static Auth auth;
     BufferedReader inFromClient;
     DataOutputStream outToClient;
     
     String[] clientCmd; 
     String capitalizedSentence;
-    
-    // boolean userVerification = false;
-    // boolean accountVerification = false;
-    // boolean passwordVerification = false;
-    
+        
     Instance(Socket socket, String root, String authFile){
         this.root = root;
         this.socket = socket;
@@ -47,6 +47,7 @@ public class Instance extends Thread{
             socket.setReuseAddress(true);
             inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));               
             outToClient = new DataOutputStream(socket.getOutputStream());
+            outToClient.writeBytes("+Welcome to Eugene's SFTP RFC913 Server\n");
         } catch (Exception e) {
             
         }
@@ -56,7 +57,7 @@ public class Instance extends Thread{
                 clientCmd = inFromClient.readLine().split(" "); 
                 
                 if (clientCmd[0].equals("DONE")){
-                    System.out.println("Closing...");
+                    outToClient.writeBytes("+Closing connection...\n");
                     socket.close();
                     running = false;
                 } else {
@@ -69,11 +70,17 @@ public class Instance extends Thread{
             }
         }
         System.out.println("Closed Thread");
-        return;
     }
     
     public String mode(String[] commandArgs, Socket socket) throws Exception{
-        //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"        
+        //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"
+
+//        if (!"USER".equals(commandArgs[1]) || !"ACCT".equals(commandArgs[1]) || !"PASS".equals(commandArgs[1])){
+//            if (!Auth.userVerification && !Auth.accountVerification && !Auth.passwordVerification){
+//                return "-Not Logged In";
+//            }
+//        }
+        
         switch (commandArgs[0]) {
             case "USER":
                 return auth.user(commandArgs[1]);
@@ -123,19 +130,23 @@ public class Instance extends Thread{
     // LIST { F | V } directory-path
     public String list(String[] args) throws IOException{
         
-        directory = "/";
+        String listDirectory = "/";
         list = args[1];
-        String response = null;
         long totalFileSize = 0;
         int nFiles = 0;
         int nDirectories = 0;
         
-        if (args.length == 3){  
-            directory = "/" + args[2];
+        if (args.length > 2){
+            String response = "";
+            for (int i = 2; i < args.length; i++){
+                 response += args[i];
+                 response = (i == (args.length - 1))? (response += ""): (response += " ");
+            }
+            listDirectory = "/" + response;
         }
                 
         if ("F".equals(list)){
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory))){
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
                 outToClient.writeBytes("+" + directory + "\n");
                 for (Path filePath: stream) {
                     outToClient.writeBytes(filePath.getFileName() + "\n");
@@ -147,18 +158,13 @@ public class Instance extends Thread{
                 outToClient.writeBytes("-" + x.toString() + "\n");
             }
         } else if ("V".equals(list)){            
-            //Path dirPath = Paths.get(root + directory);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory))){
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
                 outToClient.writeBytes("+" + directory + "\n");
-                outToClient.writeBytes(String.format("%-54s%-4s%-10s%-30s", "|Name", "|R/W","|Size", "|Date") + "|\n");
+                outToClient.writeBytes(String.format("%-68s%-4s%-10s%-20s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner") + "|\n");
                 
                 String line = "";
-                for (int w = 0; w <= 98; w++){
-                    if (w == 0 || w == 54 || w == 58 || w == 68 || w == 98){
-                        line += "|";
-                    } else {        
-                        line += "-";
-                    }
+                for (int w = 0; w <= 122; w++){
+                    line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 102 || w == 122) ? (line += "|") : (line += "-"));
                 }
                 line += "\n";
                 outToClient.writeBytes(line);
@@ -181,12 +187,21 @@ public class Instance extends Thread{
                         if ("R".equals(rw)){rw += "/";}
                         rw += "W";
                     }
-                    response = "";
-                    response += String.format("%-50s", "|" + file.getName());
-                    response += String.format("%3s", dir);
+                    String owner = "";
+                    try {
+                        FileOwnerAttributeView attr = Files.getFileAttributeView(file.toPath(), FileOwnerAttributeView.class);
+                        owner = attr.getOwner().getName();
+                    } catch (IOException e) {	
+                        e.printStackTrace();
+                    }
+                    
+                    String response = "";
+                    response += String.format("%-64s", "|" + file.getName());
+                    response += String.format("%-4s", dir);
                     response += String.format("%-4s", "|" + rw);
                     response += "|" + String.format("%9s", file.length()/1000 + "kB");
-                    response += String.format("%-30s", "|" + new Date(file.lastModified()));
+                    response += String.format("%-20s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
+                    response += String.format("%-20s", "|" + owner);
                     response += "|\n";
                     outToClient.writeBytes(response);
                 }
@@ -204,10 +219,74 @@ public class Instance extends Thread{
     }
     
     public String cdir(String[] args) throws Exception{
-        return "\0";
+        String listDirectory = "";
+        if (args.length > 2){
+            String response = "";
+            for (int i = 2; i < args.length; i++){
+                 response += args[i];
+                 response = (i == (args.length - 1))? (response += ""): (response += " ");
+            }
+            listDirectory = "/" + response;
+        }
+        
+        File file = new File(root + listDirectory);
+        if (!file.isDirectory()){
+            return "-Can't connect to directory because: " + listDirectory + " is not a directory.";
+        }
+        
+        file = new File(root + listDirectory + "/.restrict");
+        BufferedReader reader = null;
+        String text;
+        String[] restrict;
+        String[] restrictedAccounts = null;
+        String restrictedPassword = "";
+        Boolean passRestriction = false;
+        
+        try {
+            reader = new BufferedReader(new FileReader(file));
+            
+            while ((text = reader.readLine()) != null) {
+                restrict = text.split(" ", -1);
+                restrictedAccounts = restrict[0].split("\\|");
+                restrictedPassword = restrict[1];
+
+                for (String restrictedAccount : restrictedAccounts){
+                    if (Auth.account.equals(restrictedAccount) && Auth.password.equals(restrictedPassword)){
+                        passRestriction = true;
+                        break;
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Unrestricted Folder");
+            passRestriction = true;
+        } catch (IOException e) {
+            System.out.println("IO Exception");
+        } finally {
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                System.out.println("IO Exception on file close");
+            }
+        }
+        if (!passRestriction){
+            Auth.accounts = restrictedAccounts;
+            Auth.password = restrictedPassword;
+            Auth.accountVerification = false;
+            Auth.passwordVerification = false;
+            restrictedDirectory = listDirectory;
+            cdirRestricted = true;
+            return "+directory ok, send account/password";
+        } else {
+            directory = ("/".equals(listDirectory)) ? ("/") : (listDirectory);
+            return "!Changed working dir to " + listDirectory;
+        }
     }
     
     public boolean done() throws Exception{
+        outToClient.writeBytes("+Closing connection...\n");
         socket.close();
         return false;
     }

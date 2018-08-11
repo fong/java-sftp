@@ -27,6 +27,7 @@ public class Auth {
     protected static Boolean passwordVerification = false;
     
     protected static String user; // userVerification, account, password
+    protected static String account = "";
     protected static String[] accounts;
     protected static String password; // userVerification, account, password
 
@@ -96,23 +97,30 @@ public class Auth {
     }
     
     public String acct(String accountText) throws Exception {
-        //accountVerification = false;
-        if ("".equals(accounts[0]) && !passwordVerification){
-            accountVerification = true;
-            return "+Account valid, send password";
-        }
-        
-        for (String account: accounts){
-            if (account.equals(accountText)){
+            
+            if ("".equals(accounts[0]) && !passwordVerification){
                 accountVerification = true;
-                if (passwordVerification){
-                    return "!Account valid, logged-in";
-                } else {
-                    return "+Account valid, send password";
+                return (!Instance.cdirRestricted) ? ("+Account valid, send password") : ("+account ok, send password");
+            }
+
+            for (String account: accounts){
+                if (account.equals(accountText)){
+                    Auth.account = account;
+                    accountVerification = true;
+                    if (passwordVerification){
+                        if (Instance.cdirRestricted) {
+                            Instance.directory = Instance.restrictedDirectory;
+                            Instance.cdirRestricted = false;
+                            return "!Changed working dir to " + Instance.restrictedDirectory;
+                        } else {
+                            return ("!Account valid, logged-in");
+                        }
+                    } else {
+                        return (!Instance.cdirRestricted) ? ("+Account valid, send password") : ("+account ok, send password");
+                    }
                 }
             }
-        }
-        return "-Invalid account, try again";
+            return (!Instance.cdirRestricted) ? ("-Invalid account, try again") : ("-invalid account");
     }
     
      public String pass(String passText) throws Exception {
@@ -122,19 +130,25 @@ public class Auth {
          
         if ("".equals(password) && !accountVerification){
             passwordVerification = true;
-            return "+Send account";
+            return (!Instance.cdirRestricted) ? ("+Send account") : ("+password ok, send account");
         }
          
         //passwordVerification = false;
         if (password.equals(passText)){
             passwordVerification = true;
-            if (accountVerification){          
-                return "!Account valid, logged-in";
+            if (accountVerification){
+                if (Instance.cdirRestricted) {
+                    Instance.directory = Instance.restrictedDirectory;
+                    Instance.cdirRestricted = false;
+                    return "!Changed working dir to " + Instance.restrictedDirectory;
+                } else {
+                    return ("!Account valid, logged-in");
+                }
             } else {
-                return "+Send account";
+                return (!Instance.cdirRestricted) ? ("+Send account") : (" +password ok, send account");
             }
         } else {
-            return "-Wrong password, try again";
+            return (!Instance.cdirRestricted) ? ("-Wrong password, try again") : ("-invalid password");
         }
     }
     

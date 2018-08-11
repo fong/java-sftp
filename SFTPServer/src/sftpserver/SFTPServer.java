@@ -51,9 +51,6 @@ public class SFTPServer {
         } else {
             System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: AUTH-FILE FTP-ROOT-DIRECTORY");
         }
-                        
-        String[] clientCmd; 
-	String capitalizedSentence; 
 	
 	ServerSocket welcomeSocket = new ServerSocket(11510); 
         

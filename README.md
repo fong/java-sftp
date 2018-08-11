@@ -9,9 +9,9 @@ List of Features
 |PASS|Y|Y|
 |TYPE|Y|Y|
 |LIST|Y|Y|
-|CDIR|N|N|
+|CDIR|Y|Y|
 |KILL|N|N|
 |NAME|N|N|
-|DONE|N|N|
+|DONE|Y|Y|
 |RETR|N|N|
 |STOR|N|N|

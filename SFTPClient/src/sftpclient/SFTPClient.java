@@ -26,7 +26,8 @@ public class SFTPClient {
     static Socket socket;
     static DataOutputStream outToServer;
     static BufferedReader inFromServer;
-    
+    static boolean running = true;
+
     public static void main(String[] args) throws Exception{
         // TODO code application logic here
         //SFTPClient client = new SFTPClient();
@@ -43,11 +44,12 @@ public class SFTPClient {
                 outToServer =  new DataOutputStream(socket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
                 System.out.println("Client connected to " + ip + " port " + port);
+                System.out.println(inFromServer.readLine());
                 
-                while(true){
+                while(running){
                     System.out.print("> ");
                     String[] commandArgs = selectMode();
-                    enterMode(commandArgs);
+                    if (commandArgs != null) enterMode(commandArgs);
                 } 
             }
             catch (NumberFormatException e) {
@@ -71,6 +73,7 @@ public class SFTPClient {
                 System.out.println(sftpCommand);
                 mode = sftpCommand;
                 noCommand = true;
+                return commands;
             }
         }
         
@@ -79,8 +82,8 @@ public class SFTPClient {
             System.out.println("Commands available: "
                     + "\"USER\", \"ACCT\", \"PASS\", \"TYPE\", \"LIST\","
                     + "\"CDIR\", \"KILL\", \"NAME\", \"DONE\", \"RETR\", \"STOR\"");
-        }        
-        return commands;
+        }
+        return null;
     }
     
     public static void enterMode(String[] commandArgs) throws Exception{
@@ -112,6 +115,11 @@ public class SFTPClient {
                 }
                 break;
             case "CDIR":
+                if (validAuth){
+                    cdir(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "KILL":
                 break;
@@ -119,6 +127,8 @@ public class SFTPClient {
                 break;
             case "DONE":
                 outToServer.writeBytes("DONE" + '\n');
+                System.out.println(inFromServer.readLine());
+                running = false;
                 break;
             case "RETR":
                 break;
@@ -130,7 +140,6 @@ public class SFTPClient {
     }
     
     public static void auth(String mode, String[] commandArgs) throws Exception{
- 
         if (commandArgs.length != 2){
             String argsError = null;
             
@@ -150,21 +159,16 @@ public class SFTPClient {
             
             System.out.println("ARG ERROR: found " + (commandArgs.length-1) +
                     " arguments, 1 needed. Command format: " + argsError);
-        } else {
-            try (Socket clientSocket = new Socket(ip, port)) {
-                DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                                
-                outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
-                String serverResponse = inFromServer.readLine();
-                
-                if ("!".equals(serverResponse.substring(0, 1))) {
-                    validAuth = true;
-                    System.out.println(serverResponse);
-                } else {
-                    System.out.println(serverResponse);
-                }
-            } 
+        } else {                               
+            outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
+            String serverResponse = inFromServer.readLine();
+
+            if ("!".equals(serverResponse.substring(0, 1))) {
+                validAuth = true;
+                System.out.println(serverResponse);
+            } else {
+                System.out.println(serverResponse);
+            }
         }
     }
     
@@ -178,11 +182,7 @@ public class SFTPClient {
                     type = commandArgs[1];
                     System.out.println(serverResponse);
                     break;
-                case "-":
-                    System.out.println(serverResponse);
-                    break;
                 default:
-                    System.out.println("SERVER ERROR: Unknown response. Server returned: " + serverResponse);
                     break;
             }
         } else {
@@ -190,12 +190,16 @@ public class SFTPClient {
         }   
     }
     
-    public static void list(String[] commandArgs) throws Exception{
-        if ((commandArgs.length == 3 || commandArgs.length == 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){         
+    public static void list(String[] commandArgs) throws Exception {
+        if ((commandArgs.length >= 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){ 
             if (commandArgs.length == 2){    
                 outToServer.writeBytes("LIST " + commandArgs[1] + '\n');
             } else {
-                outToServer.writeBytes("LIST " + commandArgs[1] + " " + commandArgs[2] + '\n');
+                String resp = " ";
+                for (int i = 2; i < commandArgs.length; i++){
+                    resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+                }
+                outToServer.writeBytes("LIST " + commandArgs[1] + resp + '\n');
             }
 
             String serverResponse = "";
@@ -207,5 +211,14 @@ public class SFTPClient {
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: LIST { F | V } directory-path");
         }
+    }
+    
+    public static void cdir(String[] commandArgs) throws Exception {
+        String resp = " ";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+        outToServer.writeBytes("CDIR " + resp + '\n');
+        System.out.println(inFromServer.readLine());
     }
 }

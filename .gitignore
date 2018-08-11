@@ -24,6 +24,8 @@
 # NetBeans Project Files
 /SFTPClient/nbproject/
 /SFTPServer/nbproject/
+/SFTPClient/build/
+/SFTPServer/build/
 *.xml
 *.properties
 
