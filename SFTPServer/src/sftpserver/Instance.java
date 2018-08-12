@@ -95,7 +95,7 @@ public class Instance extends Thread{
             case "CDIR":
                 return cdir(commandArgs);
             case "KILL":
-                break;
+                return kill(commandArgs);
             case "NAME":
                 break;
             case "RETR":
@@ -222,12 +222,14 @@ public class Instance extends Thread{
         String listDirectory = "";
         if (args.length > 2){
             String response = "";
-            for (int i = 2; i < args.length; i++){
+            for (int i = 1; i < args.length; i++){
                  response += args[i];
                  response = (i == (args.length - 1))? (response += ""): (response += " ");
             }
             listDirectory = "/" + response;
         }
+        
+        System.out.println(listDirectory);
         
         File file = new File(root + listDirectory);
         if (!file.isDirectory()){
@@ -263,7 +265,7 @@ public class Instance extends Thread{
         } catch (IOException e) {
             System.out.println("IO Exception");
         } finally {
-            try {
+           try {
                 if (reader != null) {
                     reader.close();
                 }
@@ -282,6 +284,101 @@ public class Instance extends Thread{
         } else {
             directory = ("/".equals(listDirectory)) ? ("/") : (listDirectory);
             return "!Changed working dir to " + listDirectory;
+        }
+    }
+    
+    public String kill(String[] args) throws Exception {
+        String dirpath = "";
+        String filepath = "";
+
+        if (args.length > 2){
+            String response = "";
+            for (int i = 1; i < args.length-1; i++){
+                 response += args[i];
+                 response = (i == (args.length - 1))? (response += ""): (response += " ");
+            }
+            dirpath = "/" + response; 
+            String[] t = args[args.length-1].split("/");
+            dirpath += t[0];
+            filepath = dirpath + "/" + t[1];
+        } else {
+            dirpath = "/";
+            filepath = "/" + args[1];
+        }
+        
+        
+        
+        System.out.println("not if");
+        System.out.println(dirpath);
+        System.out.println(filepath);
+        
+        File dir = new File(root + directory + dirpath);
+        File file = new File(root + directory + filepath);
+        
+        if (!dir.isDirectory()){
+            return "-Can't connect to directory because: " + directory + dirpath + " is not a directory.";
+        }
+        if (!file.isFile()){
+            return "-Can't connect to directory because: " + directory + filepath + " is not a file.";
+        }
+        
+        System.out.println(root + directory + dirpath + "/.restrict");
+        file = new File(root + directory + dirpath + "/.restrict");
+        BufferedReader reader = null;
+        String text;
+        String[] restrict;
+        String[] restrictedAccounts = null;
+        String restrictedPassword = "";
+        Boolean passRestriction = false;
+        
+        try {
+            reader = new BufferedReader(new FileReader(file));           
+            
+            while ((text = reader.readLine()) != null) {
+                restrict = text.split(" ", -1);
+                restrictedAccounts = restrict[0].split("\\|");
+                restrictedPassword = restrict[1];
+                
+                System.out.println(Arrays.toString(restrictedAccounts));
+                System.out.println(restrictedPassword);
+                System.out.println(Auth.account);
+                System.out.println(Auth.password);
+
+                for (String restrictedAccount : restrictedAccounts){
+                    if (Auth.account.equals(restrictedAccount) && Auth.password.equals(restrictedPassword)){
+                        passRestriction = true;
+                        break;
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Unrestricted Folder");
+            passRestriction = true;
+        } catch (IOException e) {
+            System.out.println("IO Exception");
+        } finally {
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                System.out.println("IO Exception on file close");
+            }
+        }
+        if (passRestriction){
+            Path fileToDelete = new File(root + directory + filepath).toPath();
+		
+            // Delete the file
+            try {
+                Files.delete(fileToDelete);
+                return "+" + fileToDelete.getFileName() +" deleted";
+            } catch (NoSuchFileException x) {
+                return "-Not deleted because file does not exist in the directory";
+            } catch (IOException x) {
+                return "-Not deleted because of IO error. It may be protected.";
+            }
+        } else {
+            return "-Not deleted because of folder access privileges";
         }
     }
     

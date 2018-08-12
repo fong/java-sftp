@@ -122,6 +122,11 @@ public class SFTPClient {
                 }
                 break;
             case "KILL":
+                 if (validAuth){
+                    kill(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "NAME":
                 break;
@@ -214,11 +219,20 @@ public class SFTPClient {
     }
     
     public static void cdir(String[] commandArgs) throws Exception {
-        String resp = " ";
+        String resp = "";
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
         outToServer.writeBytes("CDIR " + resp + '\n');
+        System.out.println(inFromServer.readLine());
+    }
+    
+    public static void kill(String[] commandArgs) throws Exception {
+        String resp = "";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+        outToServer.writeBytes("KILL " + resp + '\n');
         System.out.println(inFromServer.readLine());
     }
 }

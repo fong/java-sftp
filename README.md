@@ -10,7 +10,7 @@ List of Features
 |TYPE|Y|Y|
 |LIST|Y|Y|
 |CDIR|Y|Y|
-|KILL|N|N|
+|KILL|Y|Y|
 |NAME|N|N|
 |DONE|Y|Y|
 |RETR|N|N|
