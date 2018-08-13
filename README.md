@@ -11,7 +11,7 @@ List of Features
 |LIST|Y|Y|
 |CDIR|Y|Y|
 |KILL|Y|Y|
-|NAME|N|N|
+|NAME|Y|Y|
 |DONE|Y|Y|
 |RETR|N|N|
 |STOR|N|N|
