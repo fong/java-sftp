@@ -33,7 +33,7 @@ public class SFTPClient {
         //SFTPClient client = new SFTPClient();
         
         // USER=1, ACCT=2, PASS=3, TYPE=4, LIST=5, CDIR=6, KILL=7, NAME=8, DONE=9, RETR=10, STOR=11
-        sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"};
+        sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "TOBE", "DONE", "RETR", "STOR"};
         
         if (args.length == 2){
             ip = args[0];
@@ -122,13 +122,25 @@ public class SFTPClient {
                 }
                 break;
             case "KILL":
-                 if (validAuth){
+                if (validAuth){
                     kill(commandArgs);
                 } else {
                     System.out.println("AUTH ERROR: Not logged in");
                 }
                 break;
             case "NAME":
+                if (validAuth){
+                    name(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
+                break;
+            case "TOBE":
+                if (validAuth){
+                    tobe(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "DONE":
                 outToServer.writeBytes("DONE" + '\n');
@@ -228,11 +240,41 @@ public class SFTPClient {
     }
     
     public static void kill(String[] commandArgs) throws Exception {
-        String resp = "";
+        if (commandArgs.length < 2){
+            System.out.println("ARG ERROR: Not enough arguments. KILL <filename> required");
+        } else {
+            String resp = "";
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-        outToServer.writeBytes("KILL " + resp + '\n');
-        System.out.println(inFromServer.readLine());
+            outToServer.writeBytes("KILL " + resp + '\n');
+            System.out.println(inFromServer.readLine());
+        }  
+    }
+    
+    public static void name(String[] commandArgs) throws Exception {
+        if (commandArgs.length < 2){
+            System.out.println("ARG ERROR: Not enough arguments. NAME <current-filename> required");
+        } else {
+            String resp = "";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+            outToServer.writeBytes("NAME " + resp + '\n');
+            System.out.println(inFromServer.readLine());
+        }
+    }
+    
+    public static void tobe(String[] commandArgs) throws Exception {
+        if (commandArgs.length < 2){
+            System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
+        } else {
+            String resp = "";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+            outToServer.writeBytes("TOBE " + resp + '\n');
+            System.out.println(inFromServer.readLine());
+        }
     }
 }
