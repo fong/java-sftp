@@ -44,7 +44,7 @@ public class SFTPClient {
                 outToServer =  new DataOutputStream(socket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
                 System.out.println("Client connected to " + ip + " port " + port);
-                System.out.println(inFromServer.readLine());
+                System.out.println(readFromServer());
                 
                 while(running){
                     System.out.print("> ");
@@ -143,13 +143,24 @@ public class SFTPClient {
                 }
                 break;
             case "DONE":
-                outToServer.writeBytes("DONE" + '\n');
-                System.out.println(inFromServer.readLine());
+                outToServer.writeBytes("DONE" + '\0');
+                System.out.println(readFromServer());
+                socket.close();
                 running = false;
                 break;
             case "RETR":
+                if (validAuth){
+                    retr(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             case "STOR":
+                if (validAuth){
+                    stor(commandArgs);
+                } else {
+                    System.out.println("AUTH ERROR: Not logged in");
+                }
                 break;
             default:
                 break;
@@ -177,8 +188,8 @@ public class SFTPClient {
             System.out.println("ARG ERROR: found " + (commandArgs.length-1) +
                     " arguments, 1 needed. Command format: " + argsError);
         } else {                               
-            outToServer.writeBytes(mode + " " + commandArgs[1] + '\n');
-            String serverResponse = inFromServer.readLine();
+            outToServer.writeBytes(mode + " " + commandArgs[1] + '\0');
+            String serverResponse = readFromServer();
 
             if ("!".equals(serverResponse.substring(0, 1))) {
                 validAuth = true;
@@ -191,8 +202,8 @@ public class SFTPClient {
     
     public static void type(String[] commandArgs) throws Exception{
         if (commandArgs.length == 2){                        
-            outToServer.writeBytes("TYPE " + commandArgs[1] + '\n');
-            String serverResponse = inFromServer.readLine();
+            outToServer.writeBytes("TYPE " + commandArgs[1] + '\0');
+            String serverResponse = readFromServer();
 
             switch (serverResponse.substring(0, 1)) {
                 case "+":
@@ -210,19 +221,19 @@ public class SFTPClient {
     public static void list(String[] commandArgs) throws Exception {
         if ((commandArgs.length >= 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){ 
             if (commandArgs.length == 2){    
-                outToServer.writeBytes("LIST " + commandArgs[1] + '\n');
+                outToServer.writeBytes("LIST " + commandArgs[1] + '\0');
             } else {
                 String resp = " ";
                 for (int i = 2; i < commandArgs.length; i++){
                     resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
                 }
-                outToServer.writeBytes("LIST " + commandArgs[1] + resp + '\n');
+                outToServer.writeBytes("LIST " + commandArgs[1] + resp + '\0');
             }
 
             String serverResponse = "";
 
             while (!"\0".equals(serverResponse)){
-                serverResponse = inFromServer.readLine();
+                serverResponse = readFromServer();
                 System.out.println(serverResponse);
             };
         } else {
@@ -235,8 +246,8 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-        outToServer.writeBytes("CDIR " + resp + '\n');
-        System.out.println(inFromServer.readLine());
+        outToServer.writeBytes("CDIR " + resp + '\0');
+        System.out.println(readFromServer());
     }
     
     public static void kill(String[] commandArgs) throws Exception {
@@ -247,8 +258,8 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("KILL " + resp + '\n');
-            System.out.println(inFromServer.readLine());
+            outToServer.writeBytes("KILL " + resp + '\0');
+            System.out.println(readFromServer());
         }  
     }
     
@@ -260,8 +271,8 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("NAME " + resp + '\n');
-            System.out.println(inFromServer.readLine());
+            outToServer.writeBytes("NAME " + resp + '\0');
+            System.out.println(readFromServer());
         }
     }
     
@@ -273,8 +284,59 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("TOBE " + resp + '\n');
-            System.out.println(inFromServer.readLine());
+            outToServer.writeBytes("TOBE " + resp + '\0');
+            System.out.println(readFromServer());
         }
     }
+    
+    public static void retr(String[] commandArgs) throws Exception {
+        if (commandArgs.length < 2){
+            System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
+        } else {
+            String resp = "";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+            outToServer.writeBytes("TOBE " + resp + '\0');
+            System.out.println(readFromServer());
+        }
+    }
+    
+    public static void stor(String[] commandArgs) throws Exception {
+        if (commandArgs.length < 2){
+            System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
+        } else {
+            String resp = "";
+            for (int i = 1; i < commandArgs.length; i++){
+                resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
+            }
+            outToServer.writeBytes("TOBE " + resp + '\0');
+            System.out.println(readFromServer());
+        }
+    }
+    
+    private static String readFromServer() {
+        String text = "";
+        int character = 0;
+
+        while (true){
+            try {
+                character = inFromServer.read();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if (character == 0) {
+                break;
+            }
+            text = text.concat(Character.toString((char)character));
+        }
+        return text;
+    }
+    
+//    private void sendToServer(String text){
+//        try {
+//            outToServer.writeBytes(text.concat(Character.toString('\0')));
+//        } catch (IOException e) {}
+//    }
 }

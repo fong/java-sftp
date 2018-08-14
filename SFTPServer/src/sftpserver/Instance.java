@@ -52,22 +52,22 @@ public class Instance extends Thread{
             socket.setReuseAddress(true);
             inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));               
             outToClient = new DataOutputStream(socket.getOutputStream());
-            outToClient.writeBytes("+Welcome to Eugene's SFTP RFC913 Server\n");
+            sendToClient("+Welcome to Eugene's SFTP RFC913 Server\0");
         } catch (Exception e) {
             
         }
         
         while(running){
             try {
-                clientCmd = inFromClient.readLine().split(" "); 
+                clientCmd = readFromClient().split(" "); 
                 
                 if (clientCmd[0].equals("DONE")){
-                    outToClient.writeBytes("+Closing connection...\n");
+                    sendToClient("+Closing connection...\0");
                     socket.close();
                     running = false;
                 } else {
                     String response = mode(clientCmd, socket);
-                    outToClient.writeBytes(response + '\n');
+                    sendToClient(response + '\0');
                 }
             } catch (Exception e){
                 //e.printStackTrace();
@@ -106,9 +106,9 @@ public class Instance extends Thread{
             case "TOBE":
                 return tobe(commandArgs);
             case "RETR":
-                break;
+                return retr(commandArgs);
             case "STOR":
-                break;
+                return stor(commandArgs);
             default:
                 break;
         }
@@ -153,28 +153,31 @@ public class Instance extends Thread{
         }
                 
         if ("F".equals(list)){
+            StringBuilder response = new StringBuilder();
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
-                outToClient.writeBytes("+" + directory + "\n");
+                response.append("+").append(directory).append("\r\n");
                 for (Path filePath: stream) {
-                    outToClient.writeBytes(filePath.getFileName() + "\n");
-                }                
+                    response.append(filePath.getFileName()).append("\r\n");
+                }
+                sendToClient(response.toString());
             } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                outToClient.writeBytes("-" + x.toString() + "\n");
+                sendToClient("-" + x.toString());
             }
-        } else if ("V".equals(list)){            
+        } else if ("V".equals(list)){
+            StringBuilder response = new StringBuilder();
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
-                outToClient.writeBytes("+" + directory + "\n");
-                outToClient.writeBytes(String.format("%-68s%-4s%-10s%-20s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner") + "|\n");
+                response.append("+").append(directory).append("\r\n");
+                response.append(String.format("%-68s%-4s%-10s%-20s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
                 
                 String line = "";
                 for (int w = 0; w <= 122; w++){
                     line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 102 || w == 122) ? (line += "|") : (line += "-"));
                 }
-                line += "\n";
-                outToClient.writeBytes(line);
+                line += "\r\n";
+                response.append(line);
                 
                 for (Path filePath: stream) {
                     File file = new File(filePath.toString());
@@ -202,24 +205,25 @@ public class Instance extends Thread{
                         e.printStackTrace();
                     }
                     
-                    String response = "";
-                    response += String.format("%-64s", "|" + file.getName());
-                    response += String.format("%-4s", dir);
-                    response += String.format("%-4s", "|" + rw);
-                    response += "|" + String.format("%9s", file.length()/1000 + "kB");
-                    response += String.format("%-20s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
-                    response += String.format("%-20s", "|" + owner);
-                    response += "|\n";
-                    outToClient.writeBytes(response);
-                }
+                    String fileList = "";
+                    fileList += String.format("%-64s", "|" + file.getName());
+                    fileList += String.format("%-4s", dir);
+                    fileList += String.format("%-4s", "|" + rw);
+                    fileList += "|" + String.format("%9s", file.length()/1000 + "kB");
+                    fileList += String.format("%-20s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
+                    fileList += String.format("%-20s", "|" + owner);
+                    fileList += "|\n";
+                    response.append(fileList);
+        }
                 String stats = nFiles + " File(s)\t " +
                                 nDirectories + " Dir(s)\t " + totalFileSize/1000 + "kB Total File Size" + "\n";
-                outToClient.writeBytes(stats);
+                response.append(stats);
+                sendToClient(response.toString());
             } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
                 // IOException can never be thrown by the iteration.
                 // In this snippet, it can only be thrown by newDirectoryStream.
                 System.err.println(x);
-                outToClient.writeBytes("-" + x.toString() + "\n");
+                sendToClient("-" + x.toString());
             }
         }
         return "\0";
@@ -359,9 +363,44 @@ public class Instance extends Thread{
     }
     
     public boolean done() throws Exception{
-        outToClient.writeBytes("+Closing connection...\n");
+        sendToClient("+Closing connection...\n");
         socket.close();
         return false;
+    }
+    
+    public String retr(String[] args){
+        return "\0";
+    }
+    
+    public String stor(String[] args){
+        return "\0";
+    }
+    
+    private String readFromClient() {
+        String text = "";
+        int character = 0;
+
+        while (true){
+            try {
+                character = inFromClient.read();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if (character == 0) {
+                break;
+            }
+            text = text.concat(Character.toString((char)character));
+        }
+        return text;
+    }
+    
+    private void sendToClient(String text){
+        try {
+            outToClient.writeBytes(text.concat(Character.toString('\0')));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     
     private boolean typeCheck(String[] args) throws Exception{
@@ -384,11 +423,11 @@ public class Instance extends Thread{
         File file = new File(root + directory + filepath);
         
         if (!dir.isDirectory()){
-            outToClient.writeBytes("-Can't connect to directory because: " + directory + dirpath + " is not a directory.");
+            sendToClient("-Can't connect to directory because: " + directory + dirpath + " is not a directory.");
             return false;
         }
         if (!file.isFile()){
-            outToClient.writeBytes("-Can't connect to directory because: " + directory + filepath + " is not a file.");
+            sendToClient("-Can't connect to directory because: " + directory + filepath + " is not a file.");
             return false;
         }   
         return true;
