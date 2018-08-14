@@ -151,6 +151,10 @@ public class Auth {
             return (!Instance.cdirRestricted) ? ("-Wrong password, try again") : ("-invalid password");
         }
     }
+     
+    public boolean verified(){
+        return userVerification && accountVerification && passwordVerification;
+    }
     
     public String getIP(Socket socket){
         return (((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress()).toString().replace("/","");

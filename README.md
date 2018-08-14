@@ -13,5 +13,5 @@ List of Features
 |KILL|Y|Y|
 |NAME|Y|Y|
 |DONE|Y|Y|
-|RETR|N|N|
+|RETR|Y|Y|
 |STOR|N|N|

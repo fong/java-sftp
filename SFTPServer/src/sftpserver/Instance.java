@@ -41,6 +41,8 @@ public class Instance extends Thread{
     String filepath = "";
     
     boolean tobe = false;
+    boolean retr = false;
+    long fileLength;
         
     Instance(Socket socket, String root, String authFile){
         this.root = root;
@@ -99,28 +101,74 @@ public class Instance extends Thread{
                 sendToClient(auth.pass(commandArgs[1]));
                 break;
             case "TYPE":
-                type(commandArgs[1]);
+                if (auth.verified()){
+                    type(commandArgs[1]);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "LIST":
-                list(commandArgs);
+                if (auth.verified()){
+                    list(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "CDIR":
-                cdir(commandArgs);
+                if (auth.verified()){
+                    cdir(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "KILL":
-                kill(commandArgs);
+                if (auth.verified()){
+                    kill(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "NAME":
-                name(commandArgs);
+                if (auth.verified()){
+                    name(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "TOBE":
-                tobe(commandArgs);
+                if (auth.verified()){
+                    tobe(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "RETR":
-                retr(commandArgs);
+                if (auth.verified()){
+                    retr(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
+                break;
+            case "SEND":
+                if (auth.verified()){
+                    send();
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
+                break;
+            case "STOP":
+                if (auth.verified()){
+                    stopRetr();
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             case "STOR":
-                stor(commandArgs);
+                if (auth.verified()){
+                    stor(commandArgs);
+                } else {
+                    sendToClient("-Cannot use " + commandArgs[0] + ". Not logged in");
+                }
                 break;
             default:
                 if (Arrays.toString(commandArgs) != null) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
@@ -222,7 +270,7 @@ public class Instance extends Thread{
                     fileList += String.format("%-64s", "|" + file.getName());
                     fileList += String.format("%-4s", dir);
                     fileList += String.format("%-4s", "|" + rw);
-                    fileList += "|" + String.format("%9s", file.length()/1000 + "kB");
+                    fileList += "|" + String.format("%9s", file.length() + "bytes");
                     fileList += String.format("%-21s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
                     fileList += String.format("%-20s", "|" + owner);
                     fileList += "|\n";
@@ -254,9 +302,7 @@ public class Instance extends Thread{
         } else {
             listDirectory = "/" + args[1];
         }
-        
-        System.out.println(listDirectory);
-        
+
         File file = new File(root + listDirectory);
         if (!file.isDirectory()){
             sendToClient("-Can't connect to directory because: " + listDirectory + " is not a directory.");
@@ -324,7 +370,6 @@ public class Instance extends Thread{
         
         if (passRestriction){
             Path fileToDelete = new File(root + directory + filepath).toPath();
-		
             // Delete the file
             try {
                 Files.delete(fileToDelete);
@@ -379,18 +424,64 @@ public class Instance extends Thread{
         }
     }
     
-    public boolean done() throws Exception{
+    public boolean done() throws Exception {
         sendToClient("+Closing connection...\n");
         socket.close();
         return false;
     }
     
-    public String retr(String[] args){
-        return "\0";
+    public void retr(String[] args) throws Exception {
+        if (typeCheck(args)){
+            File file = new File(root + directory + filepath);
+            sendToClient(Long.toString(file.length()));
+            retr = true;
+            fileLength = file.length();
+        } else {
+            sendToClient("-File doesn't exist");
+        }
     }
     
-    public String stor(String[] args){
-        return "\0";
+    public void send(){
+        if (!retr) {
+            sendToClient("-No File Selected");
+        } else {
+            byte[] bytes = new byte[(int) fileLength];
+
+            try {
+                File file = new File(root + directory + filepath);
+                FileInputStream fileStream = new FileInputStream(file);
+                BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file));
+
+                int p = 0;
+
+                // Read and send file until the whole file has been sent
+                while ((p = bufferedStream.read(bytes)) >= 0) {
+                    System.out.println(Arrays.toString(bytes));
+                    outToClient.write(bytes, 0, p);
+                }
+
+                bufferedStream.close();
+                fileStream.close();
+                outToClient.flush();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    public void stopRetr(){
+        if (retr) {
+            retr = false;
+            sendToClient("+ok, RETR aborted");
+        } else {
+            sendToClient("-no RETR started. Nothing to stop");
+        }      
+    }
+    
+    public void stor(String[] args){
+        if (retr){
+            
+        }
     }
     
     private String readFromClient() {
@@ -414,6 +505,7 @@ public class Instance extends Thread{
             }
             if (c != '\0') text = text + (char) c;
         }
+        System.out.println(text);
         return text;
     }
     
@@ -422,7 +514,7 @@ public class Instance extends Thread{
             System.out.println("OUT: " + text + "\0");
             outToClient.writeBytes(text + "\0");
         } catch (IOException lineErr) {
-                // catch empty strings, but do nothing
+            // catch empty strings, but do nothing
         }
     }
     

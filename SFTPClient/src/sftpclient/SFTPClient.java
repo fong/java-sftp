@@ -2,6 +2,7 @@ package sftpclient;
 
 import java.io.*; 
 import java.net.*; 
+import java.nio.file.*;
 
 /**
  *
@@ -22,6 +23,9 @@ public class SFTPClient {
     static boolean validAuth = false;
     
     static String type;
+    static String filename;
+    static long fileSize;
+    static File ftp = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
     
     static Socket socket;
     static DataOutputStream outToServer;
@@ -31,9 +35,12 @@ public class SFTPClient {
     public static void main(String[] args) throws Exception{
         // TODO code application logic here
         //SFTPClient client = new SFTPClient();
+        System.out.println("FTP folder: " + ftp.toString());
+        new File(ftp.toString()).mkdirs();
         
         // USER=1, ACCT=2, PASS=3, TYPE=4, LIST=5, CDIR=6, KILL=7, NAME=8, DONE=9, RETR=10, STOR=11
-        sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "TOBE", "DONE", "RETR", "STOR"};
+        sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL",
+                        "NAME", "TOBE", "DONE", "RETR", "SEND", "STOP", "STOR"};
         
         if (args.length == 2){
             ip = args[0];
@@ -43,6 +50,7 @@ public class SFTPClient {
                 socket = new Socket(ip, port);
                 outToServer =  new DataOutputStream(socket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
+                
                 System.out.println("Client connected to " + ip + " port " + port);
                 System.out.println(readFromServer());
                 
@@ -101,46 +109,22 @@ public class SFTPClient {
                 auth("PASS",commandArgs);
                 break;
             case "TYPE":
-                if (validAuth){
-                    type(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                type(commandArgs);
                 break;
             case "LIST":
-                if (validAuth){
-                    list(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                list(commandArgs);
                 break;
             case "CDIR":
-                if (validAuth){
-                    cdir(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                cdir(commandArgs);
                 break;
             case "KILL":
-                if (validAuth){
-                    kill(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                kill(commandArgs);
                 break;
             case "NAME":
-                if (validAuth){
-                    name(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                name(commandArgs);
                 break;
             case "TOBE":
-                if (validAuth){
-                    tobe(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                tobe(commandArgs);
                 break;
             case "DONE":
                 sendToServer("DONE");
@@ -149,18 +133,16 @@ public class SFTPClient {
                 running = false;
                 break;
             case "RETR":
-                if (validAuth){
-                    retr(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                retr(commandArgs);
+                break;
+            case "SEND":
+                send();
+                break;
+            case "STOP":
+                stopRetr();
                 break;
             case "STOR":
-                if (validAuth){
-                    stor(commandArgs);
-                } else {
-                    System.out.println("AUTH ERROR: Not logged in");
-                }
+                stor(commandArgs);
                 break;
             default:
                 break;
@@ -292,20 +274,49 @@ public class SFTPClient {
     
     public static void retr(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
-            System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
+            System.out.println("ARG ERROR: Not enough arguments. RETR <filename> required");
         } else {
             String resp = "";
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
+            String[] x = commandArgs[commandArgs.length-1].split("/");
+            filename = x[x.length-1];
             sendToServer("RETR " + resp);
-            System.out.println(readFromServer());
+            fileSize = Integer.parseInt(readFromServer());
+            System.out.println(fileSize);
         }
+    }
+        
+    public static void send(){
+        sendToServer("SEND ");
+        try {
+            System.out.println(fileSize);
+            File file = new File(ftp.getPath() + "/" + filename);
+            FileOutputStream fileStream = new FileOutputStream(file, false);
+            BufferedOutputStream bufferedStream = new BufferedOutputStream(fileStream);
+            
+            for (int i = 0; i < fileSize; i++) {
+                bufferedStream.write(inFromServer.read());
+            }
+            System.out.println("Closing File");  
+            bufferedStream.close();
+            fileStream.close();
+        } catch (FileNotFoundException n){
+            System.out.println("ERROR: Local FTP directory does not exist.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public static void stopRetr(){
+        sendToServer("STOP ");
+        System.out.println(readFromServer());
     }
     
     public static void stor(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
-            System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
+            System.out.println("ARG ERROR: Not enough arguments. STOR <new-filename> required");
         } else {
             String resp = "";
             for (int i = 1; i < commandArgs.length; i++){
@@ -315,6 +326,7 @@ public class SFTPClient {
             System.out.println(readFromServer());
         }
     }
+
     
     private static String readFromServer() {
         String text = "";
@@ -340,13 +352,6 @@ public class SFTPClient {
             System.out.println("OUT: " + text + "\0");
             outToServer.writeBytes(text + "\0");
         } catch (IOException lineErr) {
-//                // Socket closed by client
-//            lineErr.printStackTrace();
-//            try {
-//                socket.close();
-//            } catch (IOException socketErr){
-//                socketErr.printStackTrace();
-//            }
         }
     }
 }
