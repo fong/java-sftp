@@ -143,7 +143,7 @@ public class SFTPClient {
                 }
                 break;
             case "DONE":
-                outToServer.writeBytes("DONE" + '\0');
+                sendToServer("DONE");
                 System.out.println(readFromServer());
                 socket.close();
                 running = false;
@@ -188,21 +188,28 @@ public class SFTPClient {
             System.out.println("ARG ERROR: found " + (commandArgs.length-1) +
                     " arguments, 1 needed. Command format: " + argsError);
         } else {                               
-            outToServer.writeBytes(mode + " " + commandArgs[1] + '\0');
-            String serverResponse = readFromServer();
-
-            if ("!".equals(serverResponse.substring(0, 1))) {
-                validAuth = true;
-                System.out.println(serverResponse);
-            } else {
-                System.out.println(serverResponse);
-            }
+            sendToServer(mode + " " + commandArgs[1]);
+            validAuth = true;
+            System.out.println(readFromServer());
+//            String serverResponse = readFromServer();
+//            try {
+//                if ("!".equals(serverResponse.substring(0, 1))) {
+//                    validAuth = true;
+//                    System.out.println("login valid");
+//                    System.out.println(serverResponse);
+//                } else {
+//                    System.out.println(serverResponse);
+//                }
+//            } catch (Exception e){
+//                e.printStackTrace();
+//                System.out.println(serverResponse);
+//            }
         }
     }
     
     public static void type(String[] commandArgs) throws Exception{
         if (commandArgs.length == 2){                        
-            outToServer.writeBytes("TYPE " + commandArgs[1] + '\0');
+            sendToServer("TYPE " + commandArgs[1]);
             String serverResponse = readFromServer();
 
             switch (serverResponse.substring(0, 1)) {
@@ -221,21 +228,15 @@ public class SFTPClient {
     public static void list(String[] commandArgs) throws Exception {
         if ((commandArgs.length >= 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){ 
             if (commandArgs.length == 2){    
-                outToServer.writeBytes("LIST " + commandArgs[1] + '\0');
+                sendToServer("LIST " + commandArgs[1]);
             } else {
                 String resp = " ";
                 for (int i = 2; i < commandArgs.length; i++){
                     resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
                 }
-                outToServer.writeBytes("LIST " + commandArgs[1] + resp + '\0');
+                sendToServer("LIST " + commandArgs[1] + resp);
             }
-
-            String serverResponse = "";
-
-            while (!"\0".equals(serverResponse)){
-                serverResponse = readFromServer();
-                System.out.println(serverResponse);
-            };
+            System.out.println(readFromServer());
         } else {
             System.out.println("ARG ERROR: Invalid arguments. Command format: LIST { F | V } directory-path");
         }
@@ -246,7 +247,7 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-        outToServer.writeBytes("CDIR " + resp + '\0');
+        sendToServer("CDIR " + resp);
         System.out.println(readFromServer());
     }
     
@@ -258,7 +259,7 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("KILL " + resp + '\0');
+            sendToServer("KILL " + resp);
             System.out.println(readFromServer());
         }  
     }
@@ -271,7 +272,7 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("NAME " + resp + '\0');
+            sendToServer("NAME " + resp);
             System.out.println(readFromServer());
         }
     }
@@ -284,7 +285,7 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("TOBE " + resp + '\0');
+            sendToServer("TOBE " + resp);
             System.out.println(readFromServer());
         }
     }
@@ -297,7 +298,7 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("TOBE " + resp + '\0');
+            sendToServer("RETR " + resp);
             System.out.println(readFromServer());
         }
     }
@@ -310,33 +311,42 @@ public class SFTPClient {
             for (int i = 1; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            outToServer.writeBytes("TOBE " + resp + '\0');
+            sendToServer("STOR " + resp);
             System.out.println(readFromServer());
         }
     }
     
     private static String readFromServer() {
         String text = "";
-        int character = 0;
+        int c = 0;
 
         while (true){
             try {
-                character = inFromServer.read();
-            } catch (IOException e) {
-                e.printStackTrace();
+                c = inFromServer.read();
+                if ((char) c == '\0' && text.length() > 0) {
+                    break;
+                }
+            } catch (IOException lineErr) {
+                // catch empty strings, but do nothing
             }
-
-            if (character == 0) {
-                break;
-            }
-            text = text.concat(Character.toString((char)character));
+            if (c != '\0') text = text + (char) c;
         }
+        System.out.println("IN: " + text);
         return text;
     }
     
-//    private void sendToServer(String text){
-//        try {
-//            outToServer.writeBytes(text.concat(Character.toString('\0')));
-//        } catch (IOException e) {}
-//    }
+    private static void sendToServer(String text){
+        try {
+            System.out.println("OUT: " + text + "\0");
+            outToServer.writeBytes(text + "\0");
+        } catch (IOException lineErr) {
+//                // Socket closed by client
+//            lineErr.printStackTrace();
+//            try {
+//                socket.close();
+//            } catch (IOException socketErr){
+//                socketErr.printStackTrace();
+//            }
+        }
+    }
 }

@@ -20,12 +20,16 @@ public class Instance extends Thread{
     
     protected Socket socket;
     
+    boolean running = true;
+
     String mode;
     String list;
     String root;
+    
     public static String restrictedDirectory = "/";
     public static String directory = "/";
     public static boolean cdirRestricted = false;
+    
     protected static Auth auth;
     BufferedReader inFromClient;
     DataOutputStream outToClient;
@@ -46,7 +50,6 @@ public class Instance extends Thread{
     
     @Override
     public void run(){
-        boolean running = true;
         
         try {
             socket.setReuseAddress(true);
@@ -66,8 +69,7 @@ public class Instance extends Thread{
                     socket.close();
                     running = false;
                 } else {
-                    String response = mode(clientCmd, socket);
-                    sendToClient(response + '\0');
+                    mode(clientCmd, socket);
                 }
             } catch (Exception e){
                 //e.printStackTrace();
@@ -77,7 +79,7 @@ public class Instance extends Thread{
         System.out.println("Closed Thread");
     }
     
-    public String mode(String[] commandArgs, Socket socket) throws Exception{
+    public void mode(String[] commandArgs, Socket socket) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"
 
 //        if (!"USER".equals(commandArgs[1]) || !"ACCT".equals(commandArgs[1]) || !"PASS".equals(commandArgs[1])){
@@ -88,54 +90,65 @@ public class Instance extends Thread{
         
         switch (commandArgs[0]) {
             case "USER":
-                return auth.user(commandArgs[1]);
+                sendToClient(auth.user(commandArgs[1]));
+                break;
             case "ACCT":                  
-                return auth.acct(commandArgs[1]);
+                sendToClient(auth.acct(commandArgs[1]));
+                break;
             case "PASS":
-                return auth.pass(commandArgs[1]);
+                sendToClient(auth.pass(commandArgs[1]));
+                break;
             case "TYPE":
-                return type(commandArgs[1]);
+                type(commandArgs[1]);
+                break;
             case "LIST":
-                return list(commandArgs);
+                list(commandArgs);
+                break;
             case "CDIR":
-                return cdir(commandArgs);
+                cdir(commandArgs);
+                break;
             case "KILL":
-                return kill(commandArgs);
+                kill(commandArgs);
+                break;
             case "NAME":
-                return name(commandArgs);
+                name(commandArgs);
+                break;
             case "TOBE":
-                return tobe(commandArgs);
+                tobe(commandArgs);
+                break;
             case "RETR":
-                return retr(commandArgs);
+                retr(commandArgs);
+                break;
             case "STOR":
-                return stor(commandArgs);
+                stor(commandArgs);
+                break;
             default:
+                if (Arrays.toString(commandArgs) != null) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
                 break;
         }
-        return "COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs);
     }
     
     // TYPE { A | B | C }        
-    public String type(String type){
+    public void type(String type){
         if (null == type){
-            return "-Type not valid";
+            sendToClient("-Type not valid");
         } else switch (type) {
             case "A":
                 type = "A";
-                return "+Using Ascii mode";
+                sendToClient("+Using Ascii mode");
             case "B":
                 type = "B";
-                return "+Using Binary mode";
+                sendToClient("+Using Binary mode");
             case "C":
                 type = "C";
-                return "+Using Continuous mode";
+                sendToClient("+Using Continuous mode");
             default:
-                return "-Type not valid";
+                sendToClient("-Type not valid");
         }
     }
     
     // LIST { F | V } directory-path
-    public String list(String[] args) throws IOException{
+    public void list(String[] args) throws IOException{
         
         String listDirectory = "/";
         list = args[1];
@@ -170,11 +183,11 @@ public class Instance extends Thread{
             StringBuilder response = new StringBuilder();
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
                 response.append("+").append(directory).append("\r\n");
-                response.append(String.format("%-68s%-4s%-10s%-20s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
+                response.append(String.format("%-68s%-4s%-10s%-21s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
                 
                 String line = "";
-                for (int w = 0; w <= 122; w++){
-                    line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 102 || w == 122) ? (line += "|") : (line += "-"));
+                for (int w = 0; w <= 123; w++){
+                    line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 103 || w == 123) ? (line += "|") : (line += "-"));
                 }
                 line += "\r\n";
                 response.append(line);
@@ -210,11 +223,12 @@ public class Instance extends Thread{
                     fileList += String.format("%-4s", dir);
                     fileList += String.format("%-4s", "|" + rw);
                     fileList += "|" + String.format("%9s", file.length()/1000 + "kB");
-                    fileList += String.format("%-20s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
+                    fileList += String.format("%-21s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
                     fileList += String.format("%-20s", "|" + owner);
                     fileList += "|\n";
                     response.append(fileList);
-        }
+                }
+                
                 String stats = nFiles + " File(s)\t " +
                                 nDirectories + " Dir(s)\t " + totalFileSize/1000 + "kB Total File Size" + "\n";
                 response.append(stats);
@@ -226,10 +240,9 @@ public class Instance extends Thread{
                 sendToClient("-" + x.toString());
             }
         }
-        return "\0";
     }
     
-    public String cdir(String[] args) throws Exception{
+    public void cdir(String[] args) throws Exception{
         String listDirectory = "";
         if (args.length > 2){
             String response = "";
@@ -246,7 +259,8 @@ public class Instance extends Thread{
         
         File file = new File(root + listDirectory);
         if (!file.isDirectory()){
-            return "-Can't connect to directory because: " + listDirectory + " is not a directory.";
+            sendToClient("-Can't connect to directory because: " + listDirectory + " is not a directory.");
+            return;
         }
         
         file = new File(root + listDirectory + "/.restrict");
@@ -293,19 +307,19 @@ public class Instance extends Thread{
             Auth.passwordVerification = false;
             restrictedDirectory = listDirectory;
             cdirRestricted = true;
-            return "+directory ok, send account/password";
+            sendToClient("+directory ok, send account/password");
         } else {
             directory = ("/".equals(listDirectory)) ? ("/") : (listDirectory);
-            return "!Changed working dir to " + listDirectory;
+            sendToClient("!Changed working dir to " + listDirectory);
         }
     }
     
-    public String kill(String[] args) throws Exception {
+    public void kill(String[] args) throws Exception {
         boolean passRestriction;
         if (typeCheck(args)){
             passRestriction = verify(args);
         } else {
-            return "\0";
+            return;
         }
         
         if (passRestriction){
@@ -314,51 +328,54 @@ public class Instance extends Thread{
             // Delete the file
             try {
                 Files.delete(fileToDelete);
-                return "+" + fileToDelete.getFileName() +" deleted";
+                sendToClient("+" + fileToDelete.getFileName() + " deleted");
             } catch (NoSuchFileException x) {
-                return "-Not deleted because file does not exist in the directory";
+                sendToClient("-Not deleted because file does not exist in the directory");
             } catch (IOException x) {
-                return "-Not deleted because of IO error. It may be protected.";
+                sendToClient("-Not deleted because of IO error. It may be protected.");
             }
         } else {
-            return "-Not deleted because of folder access privileges";
+            sendToClient("-Not deleted because of folder access privileges");
         }
     }
     
-    public String name(String[] args) throws Exception {
+    public void name(String[] args) throws Exception {
         boolean passRestriction;
         
         if (!tobe){
             if (typeCheck(args) && verify(args)){
                 tobe = true;
-                return "+File exists. Send TOBE <new-name> command.";
+                sendToClient("+File exists. Send TOBE <new-name> command.");
             } else if (!typeCheck(args) && verify(args)){
                 tobe = false;
-                return "-Can't find " + directory + filepath;
+                sendToClient("-Can't find " + directory + filepath);
             } else if (typeCheck(args) && !verify(args)){
                 tobe = false;
-                return "-File has resticted access " + directory + filepath;
+                sendToClient("-File has resticted access " + directory + filepath);
             } else {
                 tobe = false;
-                return "-Can't find file and folder has restricted access";
+                sendToClient("-Can't find file and folder has restricted access");
             }
         } else {
-            return "+File exists, awaiting TOBE command.";
+            sendToClient("+File exists, awaiting TOBE command.");
         }
     }
     
-    public String tobe(String[] args) throws Exception {
+    public void tobe(String[] args) throws Exception {
         if (tobe){
             File newName = new File(root + directory + "/" + args[1]);
             File oldName = new File(root + directory + filepath);
-            if (newName.isFile()) return "-File wasn't renamed because it already exists.";
-                // Delete the file
+            if (newName.isFile()) {
+                sendToClient("-File wasn't renamed because it already exists.");
+                return;
+            }
+            
             String filename = oldName.toString();
             oldName.renameTo(newName);
             tobe = false;
-            return "+" + filename + " renamed to " + newName.getName();
+            sendToClient("+" + filename + " renamed to " + newName.getName());
         } else {
-            return "-No file selected";
+            sendToClient("-No file selected");
         }
     }
     
@@ -378,28 +395,34 @@ public class Instance extends Thread{
     
     private String readFromClient() {
         String text = "";
-        int character = 0;
+        int c = 0;
 
         while (true){
             try {
-                character = inFromClient.read();
+                c = inFromClient.read();
             } catch (IOException e) {
-                e.printStackTrace();
+                try {
+                    socket.close();
+                    running = false;
+                    System.out.println("Socket closed");
+                } catch (IOException s){
+                    System.out.println("Socket could not be closed");
+                }
             }
-
-            if (character == 0) {
+            if ((char) c == '\0') {
                 break;
             }
-            text = text.concat(Character.toString((char)character));
+            if (c != '\0') text = text + (char) c;
         }
         return text;
     }
     
     private void sendToClient(String text){
         try {
-            outToClient.writeBytes(text.concat(Character.toString('\0')));
-        } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("OUT: " + text + "\0");
+            outToClient.writeBytes(text + "\0");
+        } catch (IOException lineErr) {
+                // catch empty strings, but do nothing
         }
     }
     
