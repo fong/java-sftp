@@ -319,11 +319,49 @@ public class SFTPClient {
             System.out.println("ARG ERROR: Not enough arguments. STOR <new-filename> required");
         } else {
             String resp = "";
-            for (int i = 1; i < commandArgs.length; i++){
+            for (int i = 2; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
-            sendToServer("STOR " + resp);
-            System.out.println(readFromServer());
+            sendToServer("STOR " + commandArgs[1] + " " + resp);
+            String serverResponse = readFromServer();
+            if ("+".equals(serverResponse.substring(0,1))){
+                File file = new File(ftp.getPath() + "/" + resp);
+                System.out.println(serverResponse + ". Sending SIZE " + file.length());
+                sendToServer("SIZE " + file.length());
+                
+                serverResponse = readFromServer();
+                System.out.println(serverResponse);
+                if ("+".equals(serverResponse.substring(0,1))){
+                    System.out.println("Sending file");
+                    System.out.println(file.length());
+
+                    byte[] bytes = new byte[(int) file.length()];
+
+                    try {
+                        FileInputStream fileStream = new FileInputStream(file);
+                        BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file));
+
+                        // Read and send by byte
+                        int p = 0;
+                        while ((p = bufferedStream.read(bytes)) >= 0) {
+                            System.out.println(bytes);
+                            outToServer.write(bytes, 0, p);
+                        }
+
+                        bufferedStream.close();
+                        fileStream.close();
+                        outToServer.flush();
+                        serverResponse = readFromServer();
+                        System.out.println(serverResponse);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println(serverResponse);
+                }
+            } else {
+                System.out.println(serverResponse);
+            }
         }
     }
 

@@ -45,11 +45,10 @@ public class SFTPServer {
 //        }
     
         // Program argument authentication text file
-        if (args.length == 2){
+        if (args.length == 1){
             setAuthPath(args[0]);
-            root = args[1];
         } else {
-            System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: AUTH-FILE FTP-ROOT-DIRECTORY");
+            System.out.println("ARG ERROR: Wrongs arguments. Needs to have 1 arguments: AUTH-FILE");
         }
 	
 	ServerSocket welcomeSocket = new ServerSocket(11510); 
@@ -58,7 +57,7 @@ public class SFTPServer {
         
 	while(true) {
             Socket socket = welcomeSocket.accept();
-            new Instance(socket, root, authFile).start();
+            new Instance(socket, authFile).start();
         } 
     }
     

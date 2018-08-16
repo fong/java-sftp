@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.nio.file.*;
 import java.nio.file.attribute.*;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -24,8 +25,8 @@ public class Instance extends Thread{
 
     String mode;
     String list;
-    String root;
     
+    private static final File root = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
     public static String restrictedDirectory = "/";
     public static String directory = "/";
     public static boolean cdirRestricted = false;
@@ -42,12 +43,13 @@ public class Instance extends Thread{
     
     boolean tobe = false;
     boolean retr = false;
+    String storMode = "";
     long fileLength;
         
-    Instance(Socket socket, String root, String authFile){
-        this.root = root;
+    Instance(Socket socket, String authFile){
         this.socket = socket;
         Instance.auth = new Auth(authFile);
+        new File(root.toString()).mkdirs();
     }
     
     @Override
@@ -215,7 +217,7 @@ public class Instance extends Thread{
                 
         if ("F".equals(list)){
             StringBuilder response = new StringBuilder();
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + listDirectory))){
                 response.append("+").append(directory).append("\r\n");
                 for (Path filePath: stream) {
                     response.append(filePath.getFileName()).append("\r\n");
@@ -229,7 +231,7 @@ public class Instance extends Thread{
             }
         } else if ("V".equals(list)){
             StringBuilder response = new StringBuilder();
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root + directory + listDirectory))){
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + listDirectory))){
                 response.append("+").append(directory).append("\r\n");
                 response.append(String.format("%-68s%-4s%-10s%-21s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
                 
@@ -270,7 +272,7 @@ public class Instance extends Thread{
                     fileList += String.format("%-64s", "|" + file.getName());
                     fileList += String.format("%-4s", dir);
                     fileList += String.format("%-4s", "|" + rw);
-                    fileList += "|" + String.format("%9s", file.length() + "bytes");
+                    fileList += "|" + String.format("%9s", file.length()/1000 + " kB");
                     fileList += String.format("%-21s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
                     fileList += String.format("%-20s", "|" + owner);
                     fileList += "|\n";
@@ -299,17 +301,19 @@ public class Instance extends Thread{
                  response = (i == (args.length - 1))? (response += ""): (response += " ");
             }
             listDirectory = "/" + response;
-        } else {
+        } else if (args.length == 2){
             listDirectory = "/" + args[1];
+        } else {
+            listDirectory = "/";
         }
 
-        File file = new File(root + listDirectory);
+        File file = new File(root.toString() + listDirectory);
         if (!file.isDirectory()){
             sendToClient("-Can't connect to directory because: " + listDirectory + " is not a directory.");
             return;
         }
         
-        file = new File(root + listDirectory + "/.restrict");
+        file = new File(root.toString() + listDirectory + "/.restrict");
         BufferedReader reader = null;
         String text;
         String[] restrict;
@@ -369,7 +373,7 @@ public class Instance extends Thread{
         }
         
         if (passRestriction){
-            Path fileToDelete = new File(root + directory + filepath).toPath();
+            Path fileToDelete = new File(root.toString() + directory + filepath).toPath();
             // Delete the file
             try {
                 Files.delete(fileToDelete);
@@ -408,8 +412,8 @@ public class Instance extends Thread{
     
     public void tobe(String[] args) throws Exception {
         if (tobe){
-            File newName = new File(root + directory + "/" + args[1]);
-            File oldName = new File(root + directory + filepath);
+            File newName = new File(root.toString() + directory + "/" + args[1]);
+            File oldName = new File(root.toString() + directory + filepath);
             if (newName.isFile()) {
                 sendToClient("-File wasn't renamed because it already exists.");
                 return;
@@ -431,11 +435,13 @@ public class Instance extends Thread{
     }
     
     public void retr(String[] args) throws Exception {
-        if (typeCheck(args)){
-            File file = new File(root + directory + filepath);
+        if (typeCheck(args) && verify(args)){
+            File file = new File(root.toString() + directory + filepath);
             sendToClient(Long.toString(file.length()));
             retr = true;
             fileLength = file.length();
+        } else if (typeCheck(args) && !verify(args)){
+            sendToClient("-You are not permitted to access this folder");
         } else {
             sendToClient("-File doesn't exist");
         }
@@ -448,21 +454,20 @@ public class Instance extends Thread{
             byte[] bytes = new byte[(int) fileLength];
 
             try {
-                File file = new File(root + directory + filepath);
+                File file = new File(root.toString() + directory + filepath);
                 FileInputStream fileStream = new FileInputStream(file);
                 BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file));
 
+                // Read and send by byte
                 int p = 0;
-
-                // Read and send file until the whole file has been sent
                 while ((p = bufferedStream.read(bytes)) >= 0) {
-                    System.out.println(Arrays.toString(bytes));
                     outToClient.write(bytes, 0, p);
                 }
 
                 bufferedStream.close();
                 fileStream.close();
                 outToClient.flush();
+                retr = false;
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -478,11 +483,142 @@ public class Instance extends Thread{
         }      
     }
     
-    public void stor(String[] args){
-        if (retr){
+    public void stor(String[] args) throws Exception{
+        if (args.length > 3){
+            String response = "";
+            for (int i = 2; i < args.length-1; i++){
+                 response += args[i];
+                 response = (i == (args.length - 1))? (response += ""): (response += " ");
+            }
+            dirpath = "/" + response; 
+            String[] t = args[args.length-1].split("/");
+            dirpath += t[0];
+            filepath = dirpath + "/" + t[1];
+        } else {
+            dirpath = "/";
+            filepath = "/" + args[2];
+        }
+        
+        File dir = new File(root.toString() + directory + dirpath);
+        File file = new File(root.toString() + directory + filepath);
+        
+        if (!dir.isDirectory()){
+            sendToClient("-PATH ERROR: " + directory + dirpath + " is not a directory.");
+            return;
+        }
+        
+        if (!verify(args)){
+            sendToClient("-ACCESS ERROR: You do not have permissions to store in this folder.");
+            return;
+        }
+
+        switch (args[1]){
+            case "NEW":
+                if (file.isFile()){
+                    storMode = "NEW";
+                    sendToClient("+File exists, will create new generation of file");
+                } else {
+                    storMode = "CREATE";
+                    sendToClient("+File does not exist, will create new file");
+                }
+                break;
+            case "OLD":
+                if (file.isFile()){
+                    storMode = "OLD";
+                    sendToClient("+Will write over old file");
+                } else {
+                    storMode = "CREATE";
+                    sendToClient("+Will create new file");
+                }
+                break;
+            case "APP":
+                if (file.isFile()){
+                    storMode = "APP";
+                    sendToClient("+Will append to file");
+                } else {
+                    storMode = "CREATE";
+                    sendToClient("+Will create file");
+                }
+                break;
+            default:
+                sendToClient("-Invalid Mode Argument. Received " + args[1] + ". Require: STOR { NEW | OLD | APP } file-spec");
+                return;
+        }
+        
+        String[] resp = readFromClient().split(" ");
+        Integer fileSize;
+        
+        OUTER:
+        while (true) {
+            if (null == resp[0]) {
+                sendToClient("-Invalid Client Response. Awaiting SIZE <number-of-bytes-in-file>. Send STOP to stop transfer.");
+            } else {
+                switch (resp[0]) {
+                    case "SIZE":
+                        try {
+                            fileSize = Integer.parseInt(resp[1]);
+                            System.out.println("File: " + fileSize + "/Directory: " + dir.getFreeSpace());
+                            if (dir.getFreeSpace() > fileSize) {
+                                sendToClient("+ok, waiting for file");
+                                break OUTER;
+                            } else {
+                                sendToClient("-Not enough room, don't send it");
+                                return;
+                            }
+                        }catch (NumberFormatException e){
+                            sendToClient("-Invalid SIZE Argument. Could not convert " + resp[1] + " to a number.");
+                        }
+                    case "STOP":
+                        storMode = "";
+                        sendToClient("-Stopping transfer");
+                        return;
+                    default:
+                        sendToClient("-Invalid Client Response. Awaiting SIZE <number-of-bytes-in-file>. Send STOP to stop transfer.");
+                        break;
+                }
+            }
+        }
+        //find a different filename to save file as
+        System.out.println(storMode);
+        if ("NEW".equals(storMode)){
+            while (file.isFile()) {
+                System.out.println("Searching new Filename");
+                String[] filename = filepath.split("\\.");
+                System.out.println(Arrays.toString(filename));
+                SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd");
+                filename[0] = filename[0] + "-" + DATE_FORMAT.format(new Date());
+                System.out.println(filename[0] + "." + filename[1]);
+                filepath = filename[0] + "." + filename[1];
+                file = new File(root.toString() + directory + filename[0] + "." + filename[1]);
+            };
+            System.out.println("???");
+        }
+        
+        receiveFile(fileSize);
+    }
+    
+    private void receiveFile(Integer fileSize){
+        try {
+            File file = new File(root.toString() + directory + filepath);
+            FileOutputStream fileStream = new FileOutputStream(file, ("APP".equals(storMode))?(false):(true));
+            BufferedOutputStream bufferedStream = new BufferedOutputStream(fileStream);
             
+            for (int i = 0; i < fileSize; i++) {
+                bufferedStream.write(inFromClient.read());
+            }
+            System.out.println("Closing File");  
+            bufferedStream.close();
+            fileStream.close();
+            sendToClient("+Saved " + filepath);
+        } catch (FileNotFoundException f){
+            System.out.println("-Couldn't save because Local FTP directory does not exist.");
+        } catch (IOException i){
+            System.out.println("-Couldn't save because you do not have permission to write to directory");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+    
     
     private String readFromClient() {
         String text = "";
@@ -492,13 +628,13 @@ public class Instance extends Thread{
             try {
                 c = inFromClient.read();
             } catch (IOException e) {
-                try {
-                    socket.close();
-                    running = false;
-                    System.out.println("Socket closed");
-                } catch (IOException s){
-                    System.out.println("Socket could not be closed");
-                }
+//                try {
+//                    socket.close();
+//                    running = false;
+//                    //System.out.println("Socket closed");
+//                } catch (IOException s){
+//                    System.out.println("Socket could not be closed");
+//                }
             }
             if ((char) c == '\0') {
                 break;
@@ -534,23 +670,23 @@ public class Instance extends Thread{
             filepath = "/" + args[1];
         }
         
-        File dir = new File(root + directory + dirpath);
-        File file = new File(root + directory + filepath);
+        File dir = new File(root.toString() + directory + dirpath);
+        File file = new File(root.toString() + directory + filepath);
         
         if (!dir.isDirectory()){
-            sendToClient("-Can't connect to directory because: " + directory + dirpath + " is not a directory.");
+            sendToClient("-PATH ERROR: " + directory + dirpath + " is not a directory.");
             return false;
         }
         if (!file.isFile()){
-            sendToClient("-Can't connect to directory because: " + directory + filepath + " is not a file.");
+            sendToClient("-PATH ERROR: " + directory + filepath + " is not a file.");
             return false;
-        }   
+        }
         return true;
     }
     
     private boolean verify(String[] args) throws Exception{        
-        System.out.println(root + directory + dirpath + "/.restrict");
-        File file = new File(root + directory + dirpath + "/.restrict");
+        System.out.println(root.toString() + directory + dirpath + "/.restrict");
+        File file = new File(root.toString() + directory + dirpath + "/.restrict");
         BufferedReader reader = null;
         String text;
         String[] restrict;

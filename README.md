@@ -14,4 +14,4 @@ List of Features
 |NAME|Y|Y|
 |DONE|Y|Y|
 |RETR|Y|Y|
-|STOR|N|N|
+|STOR|Maybe|Maybe|
