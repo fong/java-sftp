@@ -22,7 +22,7 @@ public class SFTPClient {
     
     static boolean validAuth = false;
     
-    static String type;
+    static String sendMode = "A";
     static String filename;
     static long fileSize;
     static File ftp = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
@@ -196,7 +196,7 @@ public class SFTPClient {
 
             switch (serverResponse.substring(0, 1)) {
                 case "+":
-                    type = commandArgs[1];
+                    sendMode = commandArgs[1];
                     System.out.println(serverResponse);
                     break;
                 default:
@@ -293,15 +293,26 @@ public class SFTPClient {
         try {
             System.out.println(fileSize);
             File file = new File(ftp.getPath() + "/" + filename);
-            FileOutputStream fileStream = new FileOutputStream(file, false);
-            BufferedOutputStream bufferedStream = new BufferedOutputStream(fileStream);
-            
-            for (int i = 0; i < fileSize; i++) {
-                bufferedStream.write(inFromServer.read());
+            if ("A".equals(sendMode)) {
+                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
+                    for (int i = 0; i < fileSize; i++) {
+                        bufferedStream.write(inFromServer.read());
+                    }
+                    System.out.println("Closing File");
+                    bufferedStream.flush();
+                    bufferedStream.close();
+                }
+            } else {
+                try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
+                    for (int i = 0; i < fileSize; i++) {
+                        fileStream.write(inFromServer.read());
+                    }
+                    System.out.println("Closing File");
+                    fileStream.flush();
+                    fileStream.close();
+                }
             }
-            System.out.println("Closing File");  
-            bufferedStream.close();
-            fileStream.close();
+
         } catch (FileNotFoundException n){
             System.out.println("ERROR: Local FTP directory does not exist.");
         } catch (Exception e) {
@@ -338,18 +349,22 @@ public class SFTPClient {
                     byte[] bytes = new byte[(int) file.length()];
 
                     try {
-                        FileInputStream fileStream = new FileInputStream(file);
-                        BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file));
-
-                        // Read and send by byte
-                        int p = 0;
-                        while ((p = bufferedStream.read(bytes)) >= 0) {
-                            System.out.println(bytes);
-                            outToServer.write(bytes, 0, p);
+                        if ("A".equals(sendMode)){
+                    // Read and send by byte
+                            try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
+                                // Read and send by byte
+                                int p = 0;
+                                while ((p = bufferedStream.read(bytes)) >= 0) {
+                                    outToServer.write(bytes, 0, p);
+                                }
+                                bufferedStream.close();
+                            }
+                        } else {
+                            try (FileInputStream fileStream = new FileInputStream(file)) {
+                                outToServer.write(bytes, 0, bytes.length);
+                                fileStream.close();
+                            }
                         }
-
-                        bufferedStream.close();
-                        fileStream.close();
                         outToServer.flush();
                         serverResponse = readFromServer();
                         System.out.println(serverResponse);
@@ -385,11 +400,16 @@ public class SFTPClient {
         return text;
     }
     
-    private static void sendToServer(String text){
+    private static void sendToServer(String text) {
         try {
             System.out.println("OUT: " + text + "\0");
             outToServer.writeBytes(text + "\0");
         } catch (IOException lineErr) {
+            try {
+                socket.close();
+            } catch (IOException e){
+                
+            }
         }
     }
 }

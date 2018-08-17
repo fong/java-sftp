@@ -12,6 +12,8 @@ import java.nio.file.attribute.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -24,6 +26,7 @@ public class Instance extends Thread{
     boolean running = true;
 
     String mode;
+    String sendMode = "A";
     String list;
     
     private static final File root = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
@@ -173,27 +176,31 @@ public class Instance extends Thread{
                 }
                 break;
             default:
-                if (Arrays.toString(commandArgs) != null) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
+                if (commandArgs[0].length() == 4) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
                 break;
         }
     }
     
     // TYPE { A | B | C }        
-    public void type(String type){
-        if (null == type){
+    public void type(String inMode){
+        if (null == inMode){
             sendToClient("-Type not valid");
-        } else switch (type) {
+        } else switch (inMode) {
             case "A":
-                type = "A";
+                sendMode = "A";
                 sendToClient("+Using Ascii mode");
+                break;
             case "B":
-                type = "B";
+                sendMode = "B";
                 sendToClient("+Using Binary mode");
+                break;
             case "C":
-                type = "C";
+                sendMode = "C";
                 sendToClient("+Using Continuous mode");
+                break;
             default:
                 sendToClient("-Type not valid");
+                break;
         }
     }
     
@@ -233,11 +240,11 @@ public class Instance extends Thread{
             StringBuilder response = new StringBuilder();
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + listDirectory))){
                 response.append("+").append(directory).append("\r\n");
-                response.append(String.format("%-68s%-4s%-10s%-21s%-20s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
+                response.append(String.format("%-68s%-4s%-10s%-21s%-30s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
                 
                 String line = "";
-                for (int w = 0; w <= 123; w++){
-                    line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 103 || w == 123) ? (line += "|") : (line += "-"));
+                for (int w = 0; w <= 133; w++){
+                    line = ((w == 0 || w == 68 || w == 72 || w == 82 || w == 103 || w == 133) ? (line += "|") : (line += "-"));
                 }
                 line += "\r\n";
                 response.append(line);
@@ -245,13 +252,18 @@ public class Instance extends Thread{
                 for (Path filePath: stream) {
                     File file = new File(filePath.toString());
                     String rw = "";
-                    String dir = "";
+                    String fileType = "";
                            
                     if (file.isDirectory()){
-                        dir = "DIR";
+                        fileType = "DIR";
                         nDirectories++;
                     }
                     if (file.isFile()) {
+                        if (isBinary(file)){
+                            fileType = "BIN";
+                        } else {
+                            fileType = "ASC";
+                        }
                         totalFileSize += file.length();
                         nFiles++;
                     }
@@ -270,11 +282,11 @@ public class Instance extends Thread{
                     
                     String fileList = "";
                     fileList += String.format("%-64s", "|" + file.getName());
-                    fileList += String.format("%-4s", dir);
+                    fileList += String.format("%-4s", fileType);
                     fileList += String.format("%-4s", "|" + rw);
                     fileList += "|" + String.format("%9s", file.length()/1000 + " kB");
                     fileList += String.format("%-21s", "|" + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG).format(new Date(file.lastModified())));
-                    fileList += String.format("%-20s", "|" + owner);
+                    fileList += String.format("%-30s", "|" + owner);
                     fileList += "|\n";
                     response.append(fileList);
                 }
@@ -455,17 +467,24 @@ public class Instance extends Thread{
 
             try {
                 File file = new File(root.toString() + directory + filepath);
-                FileInputStream fileStream = new FileInputStream(file);
-                BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file));
-
-                // Read and send by byte
-                int p = 0;
-                while ((p = bufferedStream.read(bytes)) >= 0) {
-                    outToClient.write(bytes, 0, p);
-                }
-
-                bufferedStream.close();
-                fileStream.close();
+                if ("A".equals(sendMode)){
+                    // Read and send by byte
+                    try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
+                        // Read and send by byte
+                        int p = 0;
+                        while ((p = bufferedStream.read(bytes)) >= 0) {
+                            outToClient.write(bytes, 0, p);
+                        }
+                        bufferedStream.close();
+                    }
+                } else {
+                    try (FileInputStream fileStream = new FileInputStream(file)) {
+                        int p = 0;
+                        while ((p = fileStream.read(bytes)) >= 0) {
+                            outToClient.write(bytes, 0, p);
+                        }                        fileStream.close();
+                    }
+                }     
                 outToClient.flush();
                 retr = false;
             } catch (Exception e) {
@@ -600,15 +619,27 @@ public class Instance extends Thread{
     private void receiveFile(Integer fileSize){
         try {
             File file = new File(root.toString() + directory + filepath);
-            FileOutputStream fileStream = new FileOutputStream(file, ("APP".equals(storMode))?(false):(true));
-            BufferedOutputStream bufferedStream = new BufferedOutputStream(fileStream);
+            //byte[] b = new byte[fileSize];
             
-            for (int i = 0; i < fileSize; i++) {
-                bufferedStream.write(inFromClient.read());
+            if ("A".equals(sendMode)) {
+                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, ("APP".equals(storMode))?(false):(true)))) {
+                    for (int i = 0; i < fileSize; i++) {
+                        bufferedStream.write(inFromClient.read());
+                    }
+                    System.out.println("Closing File");
+                    bufferedStream.flush();
+                    bufferedStream.close();
+                }
+            } else {
+                try (FileOutputStream fileStream = new FileOutputStream(file, ("APP".equals(storMode))?(false):(true))) {
+                    for (int i = 0; i < fileSize; i++) {
+                        fileStream.write(inFromClient.read());
+                    }
+                    System.out.println("Closing File");
+                    fileStream.flush();
+                    fileStream.close();
+                }
             }
-            System.out.println("Closing File");  
-            bufferedStream.close();
-            fileStream.close();
             sendToClient("+Saved " + filepath);
         } catch (FileNotFoundException f){
             System.out.println("-Couldn't save because Local FTP directory does not exist.");
@@ -619,6 +650,38 @@ public class Instance extends Thread{
         }
     }
     
+    private boolean isBinary(File file){
+        FileInputStream in;
+        try {
+            in = new FileInputStream(file);
+            int size = in.available();
+            if(size > 1024) size = 1024;
+            byte[] data = new byte[size];
+            in.read(data);
+            in.close();
+
+            int ascii = 0;
+            int other = 0;
+
+            for(int i = 0; i < data.length; i++) {
+                byte b = data[i];
+                if( b < 0x09 ) return true;
+
+                if( b == 0x09 || b == 0x0A || b == 0x0C || b == 0x0D ) ascii++;
+                else if( b >= 0x20  &&  b <= 0x7E ) ascii++;
+                else other++;
+            }
+
+            if( other == 0 ) return false;
+
+            return 100 * other / (ascii + other) > 95;
+        } catch (FileNotFoundException ex) {
+            //Logger.getLogger(Instance.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException io){
+            
+        }
+        return false;
+    }
     
     private String readFromClient() {
         String text = "";
@@ -645,12 +708,16 @@ public class Instance extends Thread{
         return text;
     }
     
-    private void sendToClient(String text){
+    private void sendToClient(String text) {
         try {
             System.out.println("OUT: " + text + "\0");
             outToClient.writeBytes(text + "\0");
         } catch (IOException lineErr) {
-            // catch empty strings, but do nothing
+            try {
+                // catch empty strings, but do nothing
+                socket.close();
+            } catch (IOException ex) {
+            }
         }
     }
     
