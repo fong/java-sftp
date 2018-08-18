@@ -17,10 +17,11 @@
     1. [SFTPServer](#sftpserver)
     2. [SFTPClient](#sftpclient)
     3. [Authentication File](#authentication-file)
-    4. [FTP Folder](#ftp-folder)
+    4. [FTP Folder](#ftp-folder-ftp)
     5. [Restricted Folders](#restricted-folders)
 3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
 4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
+5. [Use Cases/Command Guide](#use-cases---command-guide)
  
 ## Introduction
 
@@ -73,16 +74,16 @@ Folders in the FTP folder can be restricted with the use of a ```.restrict``` fi
 6. Add files and Folder to the ```ftp``` directory.
 7. If you would like to create a folder with restricted access, add a ```.restrict``` file to the directory you want restricted. Similar to the authentication file, this is a text file. However, the format is as follows: ```ACCOUNT PASSWORD```. Multiple accounts are separated by a ```|```. For Example, ```ACC1|ACC2 PASS```. If the client's credentials match the account/s and password, they are given access to the folder.
 
-## How to setup Client and run
+## How to setup SFTPClient and run
 1. Compile SFTPClient by opening the folder ```SFTPClient\src\sftpclient``` in the command prompt. Use the command ```javac *.java``` to compile to class files.
 2. From the ```sftpclient``` folder, execute your SFTPClient with the command ```java -cp ../ sftpclient.SFTPClient {IP} {PORT}```. For example, ```java -cp ../ sftpserver.SFTPServer localhost 15100```. If the server is not online, or unable to be connected, a ```Connection refused. Server may not be online.``` error will appear.
 
-## Use Cases:
+## Use Cases/Command Guide:
 
 ### ***USER***, ***ACCT*** and ***PASS*** Commands
 
 ### ***TYPE*** Command
-##### *Default Example*
+#### *Default Example*
 This example illustates a normal use case of the TYPE command. It can switch between ASCII (A), Binary (B), and Continuous (C).
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -98,7 +99,7 @@ Client connected to localhost port 11510
 +Using Ascii mode
 ```
 
-##### *Error Cases*
+#### *Error Cases*
 This is the response from the server if the type is not A, B or C. File transfer type is not changed on the client or the server.
 ```
 > TYPE D
@@ -106,7 +107,7 @@ This is the response from the server if the type is not A, B or C. File transfer
 ```
 
 ### ***LIST*** Command
-##### *Default Examples*
+#### *Default Examples*
 This is an example of the basic ```LIST F``` command, it only shows the names of the files and directories.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -147,7 +148,7 @@ This is an example of the basic ```LIST V``` command, it shows the names and met
 7 File(s)	 2 Dir(s)	 145208kB Total File Size
 ```
 
-##### *Other Cases*
+#### *Other Cases*
 You can list other folders by adding an additional argument to the directory after the list type. This works for both ```LIST F``` and 
 ```
 > LIST F Folder
@@ -156,7 +157,7 @@ goodbyeworld.txt
 RFC 913 - Simple File Transfer Protocol.html
 ```
 
-##### *Error Cases*
+#### *Error Cases*
 
 ***You do not have permission to view the folder***: If the folder has ```.restrict``` file and your account is not inside, the folder is inaccessible.
 
@@ -173,7 +174,7 @@ RFC 913 - Simple File Transfer Protocol.html
 
 ### ***CDIR*** Command
 
-##### *Default Examples*
+#### *Default Examples*
 ***Unrestricted Folder***: This example illustrates a normal use case of the CDIR command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -265,7 +266,7 @@ To access a folder within a folder, include the folder path from the root of the
 > 
 ```
 
-##### *Error Cases*
+#### *Error Cases*
 ***Folder does not exist***: An error is presented and the working directory does not change.
 ```
 > CDIR Missing Folder
@@ -275,7 +276,7 @@ To access a folder within a folder, include the folder path from the root of the
 
 ### ***KILL*** Command
 
-##### *Default Example*
+#### *Default Example*
 This example illustrates a normal use case of the KILL command. At the end of these commands, the file todelete.txt is deleted from the system.
 ```
 > LIST F
@@ -298,7 +299,7 @@ vanilla-tilt.js
 > 
 ```
 
-##### *Error cases*
+#### *Error cases*
 ***File is protected***: If the file is set to read-only, the file cannot be deleted and the following response will occur.
 ```
 +/Restricted Folder/
@@ -338,7 +339,7 @@ Client connected to localhost port 11510
 ```
 
 ### ***NAME*** Command
-##### *Default Example*
+#### *Default Example*
 This example illustrates a normal use case of the NAME command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -365,7 +366,7 @@ test.txt
 > 
 ```
 
-##### *Other Cases*
+#### *Other Cases*
 
 ***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system.  This can be verified in the system file explorer.
 
@@ -403,7 +404,7 @@ test2.txt
 > 
 ```
 
-##### *Error Cases*
+#### *Error Cases*
 ***New filename already exists***: This snippet illustrates the response from the server if the file already exists. The filename will not be changed and can be verified in the system file explorer.
 ```
 > NAME test2.txt
@@ -425,7 +426,7 @@ test2.txt
 ```
 
 ### ***DONE*** Command
-##### Default Examples
+#### Default Examples
 ***No bandwidth used***: Done is used to signal the server that the client is closing down the connection. Both client and server close the socket, and the thread on the server stops. This frees up system resources such as CPU and Memory for other clients to use.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -464,7 +465,7 @@ Use SEND to retrieve file or STOP to cancel.
 
 ### ***STOR*** Command
 
-##### *Default Examples*
+#### *Default Examples*
 
 ***Store with new generations***: This example illustates the file ```avalon-mm.png``` being transfer the first time without an existing file. The subsequent additions of ```avalon-mm.png``` create new file generations, based on the format *YYYYMMddHHmmss* (Year, Month, Day, Hour, Seconds). You can verify each stage with the use of ```LIST F``` or ```LIST V```.
 ```
