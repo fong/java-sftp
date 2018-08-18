@@ -3,6 +3,7 @@ package sftpclient;
 import java.io.*; 
 import java.net.*; 
 import java.nio.file.*;
+import java.util.*;
 
 /**
  *
@@ -30,6 +31,8 @@ public class SFTPClient {
     static Socket socket;
     static DataOutputStream outToServer;
     static BufferedReader inFromServer;
+    static DataOutputStream binToServer;
+    static DataInputStream binFromServer;
     static boolean running = true;
 
     public static void main(String[] args) throws Exception{
@@ -48,8 +51,13 @@ public class SFTPClient {
             
             try{
                 socket = new Socket(ip, port);
-                outToServer =  new DataOutputStream(socket.getOutputStream());
-                inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
+                //outToServer =  new DataOutputStream(socket.getOutputStream());
+                outToServer = new DataOutputStream(socket.getOutputStream());
+                inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                
+                binToServer = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+                binFromServer = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                //inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
                 
                 System.out.println("Client connected to " + ip + " port " + port);
                 System.out.println(readFromServer());
@@ -283,42 +291,61 @@ public class SFTPClient {
             String[] x = commandArgs[commandArgs.length-1].split("/");
             filename = x[x.length-1];
             sendToServer("RETR " + resp);
-            fileSize = Integer.parseInt(readFromServer());
-            System.out.println(fileSize);
+            String serverResponse = readFromServer();
+            if ("-".equals(serverResponse.substring(0,1))){
+                System.out.println(serverResponse);
+            } else {
+                fileSize = Integer.parseInt(serverResponse);
+                System.out.println("File Size:  "+ fileSize);
+                System.out.println("Use SEND to retrieve file or STOP to cancel.");
+            }
         }
     }
         
     public static void send(){
         sendToServer("SEND ");
         try {
-            System.out.println(fileSize);
             File file = new File(ftp.getPath() + "/" + filename);
+            Long timeout = new Date().getTime() + fileSize/8;
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
+                        if (new Date().getTime() >= timeout){
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            return;
+                        }
                         bufferedStream.write(inFromServer.read());
                     }
-                    System.out.println("Closing File");
                     bufferedStream.flush();
                     bufferedStream.close();
                 }
             } else {
                 try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
-                    for (int i = 0; i < fileSize; i++) {
-                        fileStream.write(inFromServer.read());
+                    int e;
+                    byte[] bytes = new byte[(int) fileSize];
+                    while (true) {
+                        e = binFromServer.read(bytes);
+                        if (new Date().getTime() >= timeout){
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            return;
+                        }
+                        fileStream.write(bytes, 0, e);
+                        if (e < 8192){
+                            break;
+                        }
                     }
-                    System.out.println("Closing File");
                     fileStream.flush();
                     fileStream.close();
                 }
             }
-
         } catch (FileNotFoundException n){
             System.out.println("ERROR: Local FTP directory does not exist.");
+        } catch (SocketException s){
+            System.out.println("Server connection was closed before file finshed transfer.");
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
+        } 
+}
     
     public static void stopRetr(){
         sendToServer("STOP ");
@@ -350,7 +377,7 @@ public class SFTPClient {
 
                     try {
                         if ("A".equals(sendMode)){
-                    // Read and send by byte
+                            // Read and send by byte
                             try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
                                 // Read and send by byte
                                 int p = 0;
@@ -358,14 +385,19 @@ public class SFTPClient {
                                     outToServer.write(bytes, 0, p);
                                 }
                                 bufferedStream.close();
+                                outToServer.flush();
                             }
                         } else {
                             try (FileInputStream fileStream = new FileInputStream(file)) {
-                                outToServer.write(bytes, 0, bytes.length);
+                                binToServer.flush();
+                                int e;
+                                while((e = fileStream.read()) != 1) {
+                                    binToServer.write(e);
+                                }
                                 fileStream.close();
+                                binToServer.flush();
                             }
                         }
-                        outToServer.flush();
                         serverResponse = readFromServer();
                         System.out.println(serverResponse);
                     } catch (Exception e) {
@@ -388,6 +420,7 @@ public class SFTPClient {
         while (true){
             try {
                 c = inFromServer.read();
+                System.out.println(c);
                 if ((char) c == '\0' && text.length() > 0) {
                     break;
                 }

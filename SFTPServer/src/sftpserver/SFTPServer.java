@@ -45,14 +45,20 @@ public class SFTPServer {
 //        }
     
         // Program argument authentication text file
-        if (args.length == 1){
-            setAuthPath(args[0]);
+        if (args.length == 2){
+            if (!setAuthPath(args[1])){
+                return;
+            }
         } else {
-            System.out.println("ARG ERROR: Wrongs arguments. Needs to have 1 arguments: AUTH-FILE");
+            System.out.println("ARG ERROR: Wrongs arguments. Needs to have 2 arguments: PORT AUTH-FILE");
+            return;
         }
 	
-	ServerSocket welcomeSocket = new ServerSocket(11510); 
-        
+        System.out.println("Creating /ftp folder...");
+        new File(FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile().toString()).mkdirs();
+        System.out.println("/ftp folder ok!");
+
+	ServerSocket welcomeSocket = new ServerSocket(Integer.parseInt(args[0])); 
         System.out.println("Socket Started...");
         
 	while(true) {

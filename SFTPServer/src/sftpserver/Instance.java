@@ -38,6 +38,9 @@ public class Instance extends Thread{
     BufferedReader inFromClient;
     DataOutputStream outToClient;
     
+    DataInputStream binFromClient;
+    DataOutputStream binToClient;
+    
     String[] clientCmd; 
     String capitalizedSentence;
     
@@ -52,7 +55,6 @@ public class Instance extends Thread{
     Instance(Socket socket, String authFile){
         this.socket = socket;
         Instance.auth = new Auth(authFile);
-        new File(root.toString()).mkdirs();
     }
     
     @Override
@@ -60,6 +62,9 @@ public class Instance extends Thread{
         
         try {
             socket.setReuseAddress(true);
+            binToClient = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            binFromClient = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+
             inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));               
             outToClient = new DataOutputStream(socket.getOutputStream());
             sendToClient("+Welcome to Eugene's SFTP RFC913 Server\0");
@@ -176,7 +181,7 @@ public class Instance extends Thread{
                 }
                 break;
             default:
-                if (commandArgs[0].length() == 4) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
+                //if (commandArgs[0].length() == 4) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
                 break;
         }
     }
@@ -466,29 +471,40 @@ public class Instance extends Thread{
             byte[] bytes = new byte[(int) fileLength];
 
             try {
+                System.out.println(sendMode);
                 File file = new File(root.toString() + directory + filepath);
                 if ("A".equals(sendMode)){
                     // Read and send by byte
                     try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
+                        outToClient.flush();
                         // Read and send by byte
                         int p = 0;
                         while ((p = bufferedStream.read(bytes)) >= 0) {
                             outToClient.write(bytes, 0, p);
                         }
                         bufferedStream.close();
+                        outToClient.flush();
+                    } catch (IOException e){
+                        socket.close();
                     }
                 } else {
                     try (FileInputStream fileStream = new FileInputStream(file)) {
-                        int p = 0;
-                        while ((p = fileStream.read(bytes)) >= 0) {
-                            outToClient.write(bytes, 0, p);
-                        }                        fileStream.close();
+                        binToClient.flush();
+                        int e;
+                        while ((e = fileStream.read()) >= 0) {
+                          //System.out.println("Writing: " + e);
+                          binToClient.write(e);
+                        }
+                        fileStream.close();
+                        binToClient.flush();
+                    } catch (IOException e){
+                        socket.close();
                     }
                 }     
-                outToClient.flush();
+                
                 retr = false;
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         }
     }
@@ -626,18 +642,23 @@ public class Instance extends Thread{
                     for (int i = 0; i < fileSize; i++) {
                         bufferedStream.write(inFromClient.read());
                     }
-                    System.out.println("Closing File");
+                    System.out.println("Closing ASCII File");
                     bufferedStream.flush();
                     bufferedStream.close();
+                } catch (IOException e){
+                    socket.close();
                 }
             } else {
                 try (FileOutputStream fileStream = new FileOutputStream(file, ("APP".equals(storMode))?(false):(true))) {
-                    for (int i = 0; i < fileSize; i++) {
-                        fileStream.write(inFromClient.read());
+                    int e;
+                    while((e = binFromClient.read()) !=1) {
+                        fileStream.write(e);
                     }
-                    System.out.println("Closing File");
+                    System.out.println("Closing Binary File");
                     fileStream.flush();
                     fileStream.close();
+                } catch (IOException e){
+                    socket.close();
                 }
             }
             sendToClient("+Saved " + filepath);
@@ -691,20 +712,19 @@ public class Instance extends Thread{
             try {
                 c = inFromClient.read();
             } catch (IOException e) {
-//                try {
-//                    socket.close();
-//                    running = false;
-//                    //System.out.println("Socket closed");
-//                } catch (IOException s){
-//                    System.out.println("Socket could not be closed");
-//                }
+                try {
+                    socket.close();
+                    break;
+                } catch (IOException s){
+                    System.out.println("Socket could not be closed");
+                }
             }
             if ((char) c == '\0') {
                 break;
             }
             if (c != '\0') text = text + (char) c;
         }
-        System.out.println(text);
+        //System.out.println(text);
         return text;
     }
     
