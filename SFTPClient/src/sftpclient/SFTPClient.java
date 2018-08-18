@@ -61,12 +61,11 @@ public class SFTPClient {
                     String[] commandArgs = selectMode();
                     if (commandArgs != null) enterMode(commandArgs);
                 } 
-            }
-            catch (NumberFormatException e) {
+            } catch (NumberFormatException e) {
                System.out.println("PORT ERROR: Port argument needs to be a number"); 
             } catch (ConnectException e) {
                System.out.println("Connection refused. Server may not be online."); 
-            };
+            } catch (Exception e){};
         } else {
             System.out.println("ARG ERROR: No arguments. Needs to have 2 arguments: IP PORT");
         }
@@ -129,9 +128,13 @@ public class SFTPClient {
                 tobe(commandArgs);
                 break;
             case "DONE":
-                sendToServer("DONE");
-                System.out.println(readFromServer());
-                socket.close();
+                try {
+                    sendToServer("DONE");
+                    System.out.println(readFromServer());
+                    socket.close();
+                } catch (Exception e){
+                   System.out.println("Unable to close connection with server or connection already closed");
+                }
                 running = false;
                 break;
             case "RETR":
@@ -285,14 +288,15 @@ public class SFTPClient {
     }
         
     public static void send(){
+        sendToServer("SEND ");
         try {
             File file = new File(ftp.getPath() + "/" + filename); 
-            Long timeout = new Date().getTime() + fileSize/8;
+            Long timeout = new Date().getTime() + fileSize/32 + 32; //offset if filesize is 1 byte
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32 + " seconds.");
                             return;
                         }
                         bufferedStream.write(inFromServer.read());
@@ -307,7 +311,7 @@ public class SFTPClient {
                     while (true) {
                         e = binFromServer.read(bytes);
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32 + " seconds.");
                             return;
                         }
                         fileStream.write(bytes, 0, e);
@@ -345,10 +349,11 @@ public class SFTPClient {
             File file = new File(ftp.getPath() + "/" + resp);
 
             if (isBinary(file) && "A".equals(sendMode)){
-                System.out.println("-File is Binary. Switching to TYPE B");
+                //System.out.println("-File is Binary. Switching to TYPE B");
                 sendToServer("TYPE B");
                 String serverResponse = readFromServer();
                 if ("+".equals(serverResponse.substring(0, 1))){
+                    sendMode = "B";
                     System.out.println(serverResponse);
                 } else {
                     System.out.println(serverResponse);
@@ -360,6 +365,7 @@ public class SFTPClient {
                 sendToServer("TYPE A");
                 String serverResponse = readFromServer();
                 if ("+".equals(serverResponse.substring(0, 1))){
+                    sendMode = "A";
                     System.out.println(serverResponse);
                 } else {
                     System.out.println(serverResponse);
@@ -378,12 +384,12 @@ public class SFTPClient {
                 System.out.println(serverResponse);
                 
                 if ("+".equals(serverResponse.substring(0,1))){
-                    System.out.println("Sending file...");
+                    if (DEBUG) System.out.println("Sending file...");
 
                     byte[] bytes = new byte[(int) file.length()];
 
                     try {
-                        System.out.println(sendMode);
+                        // System.out.println(sendMode);
                         if ("A".equals(sendMode)){
                             // Read and send by byte
                             try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
@@ -431,7 +437,7 @@ public class SFTPClient {
         try {
             in = new FileInputStream(file);
             int size = in.available();
-            if(size > 1024) size = 1024;
+            if(size > 32) size = 32;
             byte[] data = new byte[size];
             in.read(data);
             in.close();

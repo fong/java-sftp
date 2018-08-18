@@ -40,6 +40,8 @@ public class Instance extends Thread{
     boolean retr = false;
     String storMode = "";
     long fileLength;
+    
+    long totalIO = 0;
         
     Instance(Socket socket, String authFile){
         this.socket = socket;
@@ -64,9 +66,10 @@ public class Instance extends Thread{
                 clientCmd = readFromClient().split(" "); 
                 
                 if (clientCmd[0].equals("DONE")){
-                    sendToClient("+Closing connection...\0");
+                    sendToClient("+Closing connection. A total of " + totalIO/1000 + "kB was transferred\0");
                     socket.close();
                     running = false;
+                    break;
                 } else {
                     mode(clientCmd, socket);
                 }
@@ -363,14 +366,8 @@ public class Instance extends Thread{
     }
     
     public void kill(String[] args) throws Exception {
-        boolean passRestriction;
-        if (typeCheck(args)){
-            passRestriction = verify();
-        } else {
-            return;
-        }
-        
-        if (passRestriction){
+        boolean tc = typeCheck(args);
+        if (tc && verify()){
             Path fileToDelete = new File(root.toString() + directory + filepath).toPath();
             // Delete the file
             try {
@@ -381,7 +378,7 @@ public class Instance extends Thread{
             } catch (IOException x) {
                 sendToClient("-Not deleted because of IO error. It may be protected.");
             }
-        } else {
+        } else if (tc && !verify()) {
             sendToClient("-Not deleted because of folder access privileges");
         }
     }
@@ -392,15 +389,11 @@ public class Instance extends Thread{
             if (tc && verify()){
                 tobe = true;
                 sendToClient("+File exists. Send TOBE <new-name> command.");
-            } else if (!tc && verify()){
-                tobe = false;
-                sendToClient("-Can't find " + directory + filepath);
             } else if (tc && !verify()){
                 tobe = false;
                 sendToClient("-File has resticted access " + directory + filepath);
             } else {
                 tobe = false;
-                sendToClient("-Can't find file and folder has restricted access");
             }
         } else {
             sendToClient("+File exists, awaiting TOBE command.");
@@ -425,30 +418,23 @@ public class Instance extends Thread{
         }
     }
     
-    public boolean done() throws Exception {
-        sendToClient("+Closing connection...\n");
-        socket.close();
-        return false;
-    }
-    
     public void retr(String[] args) throws Exception {
-        if (typeCheck(args) && verify()){
+        boolean tc = typeCheck(args);
+        if (tc && verify()){
             File file = new File(root.toString() + directory + filepath);
-
-            if (isBinary(file) && "A".equals(sendMode)){
+            boolean isBin = isBinary(file);
+            if (isBin && "A".equals(sendMode)){
                 sendToClient("-File is Binary. Current TYPE is A. Please switch to B or C");
-            } else if (!isBinary(file) && ("B".equals(sendMode) || "C".equals(sendMode))){
+            } else if (!isBin && ("B".equals(sendMode) || "C".equals(sendMode))){
                 sendToClient("-File is ASCII. Current TYPE is B or C. Please switch to A");
             } else {
                 sendToClient(Long.toString(file.length()));
                 retr = true;
                 fileLength = file.length();
             }
-        } else if (typeCheck(args) && !verify()){
+        } else if (tc && !verify()){
             sendToClient("-You are not permitted to access this folder");
-        } else {
-            sendToClient("-File doesn't exist");
-        }  
+        }
     }
     
     public void send(){
@@ -467,27 +453,32 @@ public class Instance extends Thread{
                         // Read and send by byte
                         int p = 0;
                         while ((p = bufferedStream.read(bytes)) >= 0) {
+                            //if (SFTPServer.DEBUG) System.out.println("Writing: "+ p); //WARNING PrintLning will take a very long time for large files
                             outToClient.write(bytes, 0, p);
                         }
                         bufferedStream.close();
                         outToClient.flush();
+                        totalIO += fileLength;
                     } catch (IOException e){
                         socket.close();
+                        running = false;
                     }
                 } else {
                     try (FileInputStream fileStream = new FileInputStream(file)) {
                         binToClient.flush();
                         int e;
                         while ((e = fileStream.read()) >= 0) {
+                          //if (SFTPServer.DEBUG) System.out.println("Writing: "+ e); //WARNING PrintLning will take a very long time for large files
                           binToClient.write(e);
                         }
                         fileStream.close();
                         binToClient.flush();
+                        totalIO += fileLength;
                     } catch (IOException e){
                         socket.close();
+                        running = false;
                     }
-                }     
-                
+                }
                 retr = false;
             } catch (Exception e) {
                 //e.printStackTrace();
@@ -603,7 +594,7 @@ public class Instance extends Thread{
         if ("NEW".equals(storMode)){
             while (file.isFile()) {
                 String[] filename = filepath.split("\\.");
-                SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd");
+                SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMddHHmmss");
                 filename[0] = filename[0] + "-" + DATE_FORMAT.format(new Date());
                 filepath = filename[0] + "." + filename[1];
                 file = new File(root.toString() + directory + filename[0] + "." + filename[1]);
@@ -615,19 +606,21 @@ public class Instance extends Thread{
     private void receiveFile(Integer fileSize){
         try {
             File file = new File(root.toString() + directory + filepath);
-            
-            Long timeout = new Date().getTime() + fileSize/8;
+            Long timeout = new Date().getTime() + fileSize/32 + 32; //offset if filesize is 1 byte
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32/1000 + " seconds.");
+                            bufferedStream.flush();
+                            bufferedStream.close();
                             return;
                         }
                         bufferedStream.write(inFromClient.read());
                     }
                     bufferedStream.flush();
                     bufferedStream.close();
+                    totalIO += fileSize;
                 }
             } else {
                 try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
@@ -636,7 +629,9 @@ public class Instance extends Thread{
                     while (true) {
                         e = binFromClient.read(bytes);
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32/1000 + " seconds.");
+                            fileStream.flush();
+                            fileStream.close();
                             return;
                         }
                         fileStream.write(bytes, 0, e);
@@ -646,6 +641,7 @@ public class Instance extends Thread{
                     }
                     fileStream.flush();
                     fileStream.close();
+                    totalIO += fileSize;
                 }
             }
             sendToClient("+Saved " + filepath);
@@ -663,7 +659,7 @@ public class Instance extends Thread{
         try {
             in = new FileInputStream(file);
             int size = in.available();
-            if(size > 1024) size = 1024;
+            if(size > 32) size = 32;
             byte[] data = new byte[size];
             in.read(data);
             in.close();
@@ -698,6 +694,7 @@ public class Instance extends Thread{
             } catch (IOException e) {
                 try {
                     socket.close();
+                    running = false;
                     break;
                 } catch (IOException s){
                     if (SFTPServer.DEBUG) System.out.println("Socket could not be closed");
@@ -706,6 +703,7 @@ public class Instance extends Thread{
             if ((char) c == '\0') break;
             if ((char) c != '\0') text = text + (char) c;
         }
+        if (SFTPServer.DEBUG) System.out.println("IN: " + text);
         return text;
     }
     
@@ -717,6 +715,7 @@ public class Instance extends Thread{
             try {
                 // if IOError close socket as client is already closed
                 socket.close();
+                running = false;
             } catch (IOException ex) {
             }
         }

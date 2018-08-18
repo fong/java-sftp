@@ -98,6 +98,11 @@ This is the response from the server if the type is not A, B or C. File transfer
 ##### *Default Examples*
 This is an example of the basic ```LIST F``` command, it only shows the names of the files and directories.
 ```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
 > LIST F
 +/
 client-20180816.txt
@@ -108,29 +113,31 @@ g4144.jpg
 jdk.exe
 mainscreen.png
 Restricted Folder
-test2.txt
+test.txt
+
+> 
 ```
 
-This is an example of the basic ```LIST V``` command, it shows the names and metadata of the files and directories.
+This is an example of the basic ```LIST V``` command, it shows the names and metadata of the files and directories. It also displays the file type (i.e. ASC for ASCII files, BIN for Binary files, DIR for Directories).
 ```
 > LIST V
 +
-|Name                                                               |R/W|Size     |Date                |Owner                        |
-|-------------------------------------------------------------------|---|---------|--------------------|-----------------------------|
-|client-20180816.txt                                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco             |
-|client.txt                                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco             |
-|CS725ASSIGNMENT1.pdf                                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco             |
-|Folder                                                         DIR |R/W|     0 kB|18/08/18 11:40:18 PM|tofurky\tofutaco             |
-|g4144.jpg                                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco             |
-|jdk.exe                                                        BIN |R/W|145071 kB|26/04/18 12:01:42 AM|tofurky\tofutaco             |
-|mainscreen.png                                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco             |
-|Restricted Folder                                              DIR |R/W|     4 kB|18/08/18 11:43:24 PM|tofurky\tofutaco             |
-|test2.txt                                                      ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco             |
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     0 kB|18/08/18 11:40:18 PM|tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|jdk.exe                                        BIN |R/W|145071 kB|26/04/18 12:01:42 AM|tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|18/08/18 11:43:24 PM|tofurky\tofutaco  |
+|test2.txt                                      ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
 7 File(s)	 2 Dir(s)	 145208kB Total File Size
 ```
 
 ##### *Other Cases*
-You can list other folders by adding an additional argument to the directory after the list type. This works for both ```LIST F``` and ```LIST V```.
+You can list other folders by adding an additional argument to the directory after the list type. This works for both ```LIST F``` and 
 ```
 > LIST F Folder
 +/Folder
@@ -153,9 +160,175 @@ RFC 913 - Simple File Transfer Protocol.html
 -java.nio.file.NoSuchFileException: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPServer\ftp\FakeFolder
 ```
 
+### ***CDIR*** Command
+
+##### *Default Examples*
+***Unrestricted Folder***: This example illustrates a normal use case of the CDIR command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> LIST F
++
+client-20180816.txt
+client.txt
+CS725ASSIGNMENT1.pdf
+Folder
+g4144.jpg
+jdk.exe
+mainscreen.png
+Restricted Folder
+test2.txt
+
+> CDIR Folder
+!Changed working dir to /Folder
+> LIST F
++/Folder
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+
+> 
+```
+***Restricted Folder, account not permitted***: If the folder is restricted, the current account and password is revoked and the user will be required to enter a new account and password. Working folder directory is not changed until account and password is correct.
+```
+> CDIR Restricted Folder
++directory ok, send account/password
+> ACCT acc2
++account ok, send password
+> PASS pw2
+!Changed working dir to /Restricted Folder
+> LIST F
++/Restricted Folder
+.restrict
+auckland.PNG
+mypasswords.txt
+todelete - Copy.txt
+vanilla-tilt.js
+
+> 
+```
+
+***Restricted Folder, account is permitted***: If the user's account and password matches the credentials in the folder, the working directory is switched without the need to re-enter account and password.
+
+```
+> USER ACCUSR
++User-id valid, send account and password
+> ACCT acc2
++Account valid, send password
+> PASS pw2
+!Account valid, logged-in
+> CDIR Restricted Folder
+!Changed working dir to /Restricted Folder
+> LIST F
++/Restricted Folder
+.restrict
+auckland.PNG
+mypasswords.txt
+todelete - Copy.txt
+vanilla-tilt.js
+
+> 
+```
+
+***Other Cases***
+To go back to the root of the FTP server, send CDIR without arguments
+```
+> CDIR Folder
+!Changed working dir to /Folder
+> LIST F
++/Folder
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+
+> CDIR
+!Changed working dir to /
+> 
+```
+
+To access a folder within a folder, include the folder path from the root of the FTP server.
+```
+> CDIR Folder/Another Folder
+!Changed working dir to /Folder/Another Folder
+> 
+```
+
+##### *Error Cases*
+***Folder does not exist***: An error is presented and the working directory does not change.
+```
+> CDIR Missing Folder
+-Can't connect to directory because: /Missing Folder is not a directory.
+> 
+```
+
+### ***KILL*** Command
+
+##### *Default Example*
+This example illustrates a normal use case of the KILL command. At the end of these commands, the file todelete.txt is deleted from the system.
+```
+> LIST F
++/Restricted Folder
+.restrict
+auckland.PNG
+mypasswords.txt
+todelete.txt
+vanilla-tilt.js
+
+> KILL todelete.txt
++todelete.txt deleted
+> LIST F
++/Restricted Folder/
+.restrict
+auckland.PNG
+mypasswords.txt
+vanilla-tilt.js
+
+> 
+```
+
+##### *Error cases*
+***File is protected***: If the file is set to read-only, the file cannot be deleted and the following response will occur.
+```
++/Restricted Folder/
+.restrict
+auckland.PNG
+mypasswords.txt
+vanilla-tilt.js
+
+> KILL auckland.png
+-Not deleted because of IO error. It may be protected.
+> LIST F
++/Restricted Folder/
+.restrict
+auckland.PNG
+mypasswords.txt
+vanilla-tilt.js
+
+> 
+```
+
+***File does not exist***: If the file does not exist, the following server response will occur.
+```
+> KILL nofile.exe
+-PATH ERROR: /Restricted Folder/nofile.exe is not a file.
+```
+
+***User does not have access privileges to folder***: If the user account does not have the correct permission, the following server response will occur. To be able to delete the file, the user must use ```CDIR``` to the restricted directory and enter their usernames and passwords. If you view the folder from the system file explorer, you can see that the file has not been deleted.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> KILL Restricted Folder/vanilla-tilt.js
+-Not deleted because of folder access privileges
+> 
+```
+
 ### ***NAME*** Command
 ##### *Default Example*
-This example illustrates a normal use case of the NAME command. At the end of these commands, the file test.txt is renamed to test2.txt within the system.
+This example illustrates a normal use case of the NAME command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -183,7 +356,7 @@ test.txt
 
 ##### *Other Cases*
 
-***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system.
+***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system.  This can be verified in the system file explorer.
 
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -198,8 +371,29 @@ Client connected to localhost port 11510
 > 
 ```
 
+***Renaming a file with commands in between***: The TOBE command is not bound to the NAME command. If the user wants to use other commands, they can do so. For example, if the user was to change the name, but is uncertain what other files are in the folder, they can use the ```LIST``` command before using the TOBE command.
+```
+> NAME test2.txt
++File exists. Send TOBE <new-name> command.
+> LIST F
++/
+client-20180816.txt
+client.txt
+CS725ASSIGNMENT1.pdf
+Folder
+g4144.jpg
+jdk.exe
+mainscreen.png
+Restricted Folder
+test2.txt
+
+> TOBE test.txt
++test2.txt renamed to test.txt
+> 
+```
+
 ##### *Error Cases*
-***New filename already exists***: This snippet illustrates the response from the server if the file already exists. The filename will not be changed.
+***New filename already exists***: This snippet illustrates the response from the server if the file already exists. The filename will not be changed and can be verified in the system file explorer.
 ```
 > NAME test2.txt
 +File exists. Send TOBE <new-name> command.
@@ -219,3 +413,89 @@ Client connected to localhost port 11510
 -File has resticted access //Restricted Folder/mypasswords.txt
 ```
 
+### ***DONE*** Command
+##### Default Examples
+***No bandwidth used***: Done is used to signal the server that the client is closing down the connection. Both client and server close the socket, and the thread on the server stops. This frees up system resources such as CPU and Memory for other clients to use.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> DONE
++Closing connection. A total of 0kB was transferred
+```
+
+***Bandwidth used***: If the user has done any file transfers (either uploading or downloading) it is recorded and displayed when the user uses the ```DONE``` command.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> RETR test.txt
+File Size:  39
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+> TYPE B
++Using Binary mode
+> RETR mainscreen.png
+File Size:  13380
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+> RETR g4144.jpg
+File Size:  4245
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+> DONE
++Closing connection. A total of 17kB was transferred
+```
+
+### ***STOR*** Command
+
+##### *Default Examples*
+
+***Store with new generations***: This example illustates the file ```avalon-mm.png``` being transfer the first time without an existing file. The subsequent additions of ```avalon-mm.png``` create new file generations, based on the format *YYYYMMddHHmmss* (Year, Month, Day, Hour, Seconds). You can verify each stage with the use of ```LIST F``` or ```LIST V```.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> CDIR Folder
+!Changed working dir to /Folder
+> STOR NEW avalon-mm.png
++Using Binary mode
++File does not exist, will create new file. Sending SIZE 30073
++ok, waiting for file
+Sending file...
++Saved /avalon-mm.png
+> LIST F
++/Folder/
+Another Folder
+avalon-mm.png
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+
+> STOR NEW avalon-mm.png
++Using Binary mode
++File exists, will create new generation of file. Sending SIZE 30073
++ok, waiting for file
+Sending file...
++Saved /avalon-mm-20180819023951.png
+> STOR NEW avalon-mm.png
++File exists, will create new generation of file. Sending SIZE 30073
++ok, waiting for file
+Sending file...
++Saved /avalon-mm-20180819024005.png
+> LIST F
++/Folder/
+Another Folder
+avalon-mm-20180819023951.png
+avalon-mm-20180819024005.png
+avalon-mm.png
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+
+> 
+```
