@@ -1,7 +1,9 @@
 # RFC 913 - Simple File Transfer Protocol
  **Java**
+ 
  Eugene Fong (efon103)
- github.com/fong/java-sftp
+ 
+ [github.com/fong/java-sftp](https://github.com/fong/java-sftp)
 
 ## List of Working Features
  |Command|USER|ACCT|PASS|TYPE|LIST|CDIR|KILL|NAME|DONE|RETR|STOR|
@@ -38,13 +40,18 @@ Example of an authentication text file:
 //Do not leave comments in actual authentication file. This is just an example.
 //USER only, note the two spaces at the end of the line 
 USER1  
+
 //USER and ACCOUNT, note the last space
 USER2 ACC1 
+
 //USER and PASSWORD, note the double space in between
 USER3  PW1
+
 //USER, ACCOUNT, and PASSWORD
 USER4 ACC2 PW2
-//USER, multiple ACCOUNTS, and PASSWORD. Note that PASSWORD is tied to USER and not ACCOUNT (as account is used for billing purposes only).
+
+//USER, multiple ACCOUNTS, and PASSWORD.
+//Note that PASSWORD is tied to USER and not ACCOUNT (as account is used for billing purposes only).
 USER5 ACC1|ACC2|ACC3 PW3
 ```
 
