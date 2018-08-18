@@ -21,7 +21,7 @@
     5. [Restricted Folders](#restricted-folders)
 3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
 4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
-5. [Use Cases/Command Guide](#use-cases---command-guide)
+5. [Use Cases/Command Guide](#use-casescommand-guide)
  
 ## Introduction
 
@@ -175,7 +175,7 @@ RFC 913 - Simple File Transfer Protocol.html
 ### ***CDIR*** Command
 
 #### *Default Examples*
-***Unrestricted Folder***: This example illustrates a normal use case of the CDIR command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
+***Unrestricted Folder***: This example illustrates a normal use case of the ```CDIR``` command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -245,7 +245,7 @@ vanilla-tilt.js
 ```
 
 ***Other Cases***
-To go back to the root of the FTP server, send CDIR without arguments
+To go back to the root of the FTP server, send ``CDIR`` without arguments
 ```
 > CDIR Folder
 !Changed working dir to /Folder
@@ -277,7 +277,7 @@ To access a folder within a folder, include the folder path from the root of the
 ### ***KILL*** Command
 
 #### *Default Example*
-This example illustrates a normal use case of the KILL command. At the end of these commands, the file todelete.txt is deleted from the system.
+This example illustrates a normal use case of the ```KILL``` command. At the end of these commands, the file todelete.txt is deleted from the system.
 ```
 > LIST F
 +/Restricted Folder
@@ -340,7 +340,7 @@ Client connected to localhost port 11510
 
 ### ***NAME*** Command
 #### *Default Example*
-This example illustrates a normal use case of the NAME command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
+This example illustrates a normal use case of the ```NAME``` command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -383,7 +383,7 @@ Client connected to localhost port 11510
 > 
 ```
 
-***Renaming a file with commands in between***: The TOBE command is not bound to the NAME command. If the user wants to use other commands, they can do so. For example, if the user was to change the name, but is uncertain what other files are in the folder, they can use the ```LIST``` command before using the TOBE command.
+***Renaming a file with commands in between***: The ```TOBE``` command is not bound to the ```NAME``` command. If the user wants to use other commands, they can do so. For example, if the user was to change the name, but is uncertain what other files are in the folder, they can use the ```LIST``` command before using the ```TOBE``` command.
 ```
 > NAME test2.txt
 +File exists. Send TOBE <new-name> command.
