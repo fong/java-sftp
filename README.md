@@ -5,11 +5,22 @@
  
  [github.com/fong/java-sftp](https://github.com/fong/java-sftp)
 
-## List of Working Features
+#### List of Working Features
  |Command|USER|ACCT|PASS|TYPE|LIST|CDIR|KILL|NAME|DONE|RETR|STOR|
  |:-----:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
  |Client |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |
  |Server |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |Yes |
+ 
+ ## Table of Contents
+ 1. [Introduction](#introduction)
+ 2. [List of Components](#list-of-components)
+    1. [SFTPServer](#sftpserver)
+    2. [SFTPClient](#sftpclient)
+    3. [Authentication File](#authentication-file)
+    4. [FTP Folder](#ftp-folder)
+    5. [Restricted Folders](#restricted-folders)
+3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
+4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
  
 ## Introduction
 
@@ -32,7 +43,7 @@ This is the root of the FTP server. Clients cannot access directories or folders
 #### Restricted Folders
 Folders in the FTP folder can be restricted with the use of a ```.restrict``` file containing all valid accounts and passwords to the folder. **Note 1:** If there is no ```.restrict``` file, the folder will be public. **Note 2** If there is a ```.restrict``` file with no accounts and passwords, the folder will be inaccessible by any client.
 
-## How to setup SFTPServer and run:
+## How to setup SFTPServer and run
 1. Create you authentication text file. This an be done with any text editor. The format of the text file is ```USER ACCT PASS```. Each parameter is separated by a space. If there is no parameter (i.e. no account or no password), ensure that there is still a space in between. If multiple accounts are required separate each account with a ```|```. Each user is declared on a new line. Save it as a .txt file (e.g. ```auth.txt```).
 
    Example of an authentication text file:
@@ -62,7 +73,7 @@ Folders in the FTP folder can be restricted with the use of a ```.restrict``` fi
 6. Add files and Folder to the ```ftp``` directory.
 7. If you would like to create a folder with restricted access, add a ```.restrict``` file to the directory you want restricted. Similar to the authentication file, this is a text file. However, the format is as follows: ```ACCOUNT PASSWORD```. Multiple accounts are separated by a ```|```. For Example, ```ACC1|ACC2 PASS```. If the client's credentials match the account/s and password, they are given access to the folder.
 
-## How to setup Client and run:
+## How to setup Client and run
 1. Compile SFTPClient by opening the folder ```SFTPClient\src\sftpclient``` in the command prompt. Use the command ```javac *.java``` to compile to class files.
 2. From the ```sftpclient``` folder, execute your SFTPClient with the command ```java -cp ../ sftpclient.SFTPClient {IP} {PORT}```. For example, ```java -cp ../ sftpserver.SFTPServer localhost 15100```. If the server is not online, or unable to be connected, a ```Connection refused. Server may not be online.``` error will appear.
 
