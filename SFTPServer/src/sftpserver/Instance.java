@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package sftpserver;
 
 import java.io.*;
@@ -12,13 +7,7 @@ import java.nio.file.attribute.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-/**
- *
- * @author tofupudding
- */
 public class Instance extends Thread{
     
     protected Socket socket;
@@ -31,13 +20,13 @@ public class Instance extends Thread{
     
     private static final File root = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
     public static String restrictedDirectory = "/";
-    public static String directory = "/";
+    public static String directory = "";
     public static boolean cdirRestricted = false;
     
     protected static Auth auth;
+    
     BufferedReader inFromClient;
     DataOutputStream outToClient;
-    
     DataInputStream binFromClient;
     DataOutputStream binToClient;
     
@@ -68,9 +57,7 @@ public class Instance extends Thread{
             inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));               
             outToClient = new DataOutputStream(socket.getOutputStream());
             sendToClient("+Welcome to Eugene's SFTP RFC913 Server\0");
-        } catch (Exception e) {
-            
-        }
+        } catch (Exception e) {}
         
         while(running){
             try {
@@ -83,22 +70,13 @@ public class Instance extends Thread{
                 } else {
                     mode(clientCmd, socket);
                 }
-            } catch (Exception e){
-                //e.printStackTrace();
-                //break;
-            }
+            } catch (Exception e){}
         }
-        System.out.println("Closed Thread");
+        if (SFTPServer.DEBUG) System.out.println("Closed Thread");
     }
     
     public void mode(String[] commandArgs, Socket socket) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"
-
-//        if (!"USER".equals(commandArgs[1]) || !"ACCT".equals(commandArgs[1]) || !"PASS".equals(commandArgs[1])){
-//            if (!Auth.userVerification && !Auth.accountVerification && !Auth.passwordVerification){
-//                return "-Not Logged In";
-//            }
-//        }
         
         switch (commandArgs[0]) {
             case "USER":
@@ -181,7 +159,6 @@ public class Instance extends Thread{
                 }
                 break;
             default:
-                //if (commandArgs[0].length() == 4) sendToClient("COMMAND ERROR: Server recieved " + Arrays.toString(commandArgs));
                 break;
         }
     }
@@ -210,9 +187,9 @@ public class Instance extends Thread{
     }
     
     // LIST { F | V } directory-path
-    public void list(String[] args) throws IOException{
+    public void list(String[] args) throws Exception{
         
-        String listDirectory = "/";
+        //String listDirectory = "/";
         list = args[1];
         long totalFileSize = 0;
         int nFiles = 0;
@@ -224,27 +201,32 @@ public class Instance extends Thread{
                  response += args[i];
                  response = (i == (args.length - 1))? (response += ""): (response += " ");
             }
-            listDirectory = "/" + response;
+            dirpath = "/" + response;
+        }
+        
+        if (!verify()){
+           dirpath = "";
+           sendToClient("-Folder is restricted, you do not have sufficient permissions to view");
+           return;
         }
                 
         if ("F".equals(list)){
             StringBuilder response = new StringBuilder();
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + listDirectory))){
-                response.append("+").append(directory).append("\r\n");
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + dirpath))){
+                response.append("+").append(directory).append(dirpath).append("\r\n");
                 for (Path filePath: stream) {
                     response.append(filePath.getFileName()).append("\r\n");
                 }
                 sendToClient(response.toString());
             } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
-                // IOException can never be thrown by the iteration.
-                // In this snippet, it can only be thrown by newDirectoryStream.
-                System.err.println(x);
+                if (SFTPServer.DEBUG) System.err.println(x);
+                dirpath = "";
                 sendToClient("-" + x.toString());
             }
         } else if ("V".equals(list)){
             StringBuilder response = new StringBuilder();
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + listDirectory))){
-                response.append("+").append(directory).append("\r\n");
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root.toString() + directory + dirpath))){
+                response.append("+").append(directory).append(dirpath).append("\r\n");
                 response.append(String.format("%-68s%-4s%-10s%-21s%-30s", "|Name", "|R/W","|Size", "|Date", "|Owner")).append("|\r\n");
                 
                 String line = "";
@@ -282,7 +264,7 @@ public class Instance extends Thread{
                         FileOwnerAttributeView attr = Files.getFileAttributeView(file.toPath(), FileOwnerAttributeView.class);
                         owner = attr.getOwner().getName();
                     } catch (IOException e) {	
-                        e.printStackTrace();
+                        if (SFTPServer.DEBUG) e.printStackTrace();
                     }
                     
                     String fileList = "";
@@ -301,9 +283,8 @@ public class Instance extends Thread{
                 response.append(stats);
                 sendToClient(response.toString());
             } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
-                // IOException can never be thrown by the iteration.
-                // In this snippet, it can only be thrown by newDirectoryStream.
-                System.err.println(x);
+                if (SFTPServer.DEBUG) System.err.println(x);
+                dirpath = "";
                 sendToClient("-" + x.toString());
             }
         }
@@ -354,17 +335,17 @@ public class Instance extends Thread{
                 }
             }
         } catch (FileNotFoundException e) {
-            System.out.println("Unrestricted Folder");
+            if (SFTPServer.DEBUG) System.out.println("Unrestricted Folder");
             passRestriction = true;
         } catch (IOException e) {
-            System.out.println("IO Exception");
+            if (SFTPServer.DEBUG) System.out.println("IO Exception");
         } finally {
            try {
                 if (reader != null) {
                     reader.close();
                 }
             } catch (IOException e) {
-                System.out.println("IO Exception on file close");
+                if (SFTPServer.DEBUG) System.out.println("IO Exception on file close");
             }
         }
         if (!passRestriction){
@@ -384,7 +365,7 @@ public class Instance extends Thread{
     public void kill(String[] args) throws Exception {
         boolean passRestriction;
         if (typeCheck(args)){
-            passRestriction = verify(args);
+            passRestriction = verify();
         } else {
             return;
         }
@@ -405,17 +386,16 @@ public class Instance extends Thread{
         }
     }
     
-    public void name(String[] args) throws Exception {
-        boolean passRestriction;
-        
+    public void name(String[] args) throws Exception {        
         if (!tobe){
-            if (typeCheck(args) && verify(args)){
+            boolean tc = typeCheck(args);
+            if (tc && verify()){
                 tobe = true;
                 sendToClient("+File exists. Send TOBE <new-name> command.");
-            } else if (!typeCheck(args) && verify(args)){
+            } else if (!tc && verify()){
                 tobe = false;
                 sendToClient("-Can't find " + directory + filepath);
-            } else if (typeCheck(args) && !verify(args)){
+            } else if (tc && !verify()){
                 tobe = false;
                 sendToClient("-File has resticted access " + directory + filepath);
             } else {
@@ -431,15 +411,15 @@ public class Instance extends Thread{
         if (tobe){
             File newName = new File(root.toString() + directory + "/" + args[1]);
             File oldName = new File(root.toString() + directory + filepath);
+            String[] filename = filepath.split("/");
+
             if (newName.isFile()) {
                 sendToClient("-File wasn't renamed because it already exists.");
                 return;
             }
-            
-            String filename = oldName.toString();
             oldName.renameTo(newName);
             tobe = false;
-            sendToClient("+" + filename + " renamed to " + newName.getName());
+            sendToClient("+" + filename[filename.length - 1] + " renamed to " + newName.getName());
         } else {
             sendToClient("-No file selected");
         }
@@ -452,16 +432,23 @@ public class Instance extends Thread{
     }
     
     public void retr(String[] args) throws Exception {
-        if (typeCheck(args) && verify(args)){
+        if (typeCheck(args) && verify()){
             File file = new File(root.toString() + directory + filepath);
-            sendToClient(Long.toString(file.length()));
-            retr = true;
-            fileLength = file.length();
-        } else if (typeCheck(args) && !verify(args)){
+
+            if (isBinary(file) && "A".equals(sendMode)){
+                sendToClient("-File is Binary. Current TYPE is A. Please switch to B or C");
+            } else if (!isBinary(file) && ("B".equals(sendMode) || "C".equals(sendMode))){
+                sendToClient("-File is ASCII. Current TYPE is B or C. Please switch to A");
+            } else {
+                sendToClient(Long.toString(file.length()));
+                retr = true;
+                fileLength = file.length();
+            }
+        } else if (typeCheck(args) && !verify()){
             sendToClient("-You are not permitted to access this folder");
         } else {
             sendToClient("-File doesn't exist");
-        }
+        }  
     }
     
     public void send(){
@@ -471,7 +458,7 @@ public class Instance extends Thread{
             byte[] bytes = new byte[(int) fileLength];
 
             try {
-                System.out.println(sendMode);
+                if (SFTPServer.DEBUG) System.out.println(sendMode);
                 File file = new File(root.toString() + directory + filepath);
                 if ("A".equals(sendMode)){
                     // Read and send by byte
@@ -492,7 +479,6 @@ public class Instance extends Thread{
                         binToClient.flush();
                         int e;
                         while ((e = fileStream.read()) >= 0) {
-                          //System.out.println("Writing: " + e);
                           binToClient.write(e);
                         }
                         fileStream.close();
@@ -542,7 +528,7 @@ public class Instance extends Thread{
             return;
         }
         
-        if (!verify(args)){
+        if (!verify()){
             sendToClient("-ACCESS ERROR: You do not have permissions to store in this folder.");
             return;
         }
@@ -592,7 +578,7 @@ public class Instance extends Thread{
                     case "SIZE":
                         try {
                             fileSize = Integer.parseInt(resp[1]);
-                            System.out.println("File: " + fileSize + "/Directory: " + dir.getFreeSpace());
+                            if (SFTPServer.DEBUG) System.out.println("File: " + fileSize + "/Directory: " + dir.getFreeSpace());
                             if (dir.getFreeSpace() > fileSize) {
                                 sendToClient("+ok, waiting for file");
                                 break OUTER;
@@ -614,58 +600,59 @@ public class Instance extends Thread{
             }
         }
         //find a different filename to save file as
-        System.out.println(storMode);
         if ("NEW".equals(storMode)){
             while (file.isFile()) {
-                System.out.println("Searching new Filename");
                 String[] filename = filepath.split("\\.");
-                System.out.println(Arrays.toString(filename));
                 SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd");
                 filename[0] = filename[0] + "-" + DATE_FORMAT.format(new Date());
-                System.out.println(filename[0] + "." + filename[1]);
                 filepath = filename[0] + "." + filename[1];
                 file = new File(root.toString() + directory + filename[0] + "." + filename[1]);
             };
-            System.out.println("???");
         }
-        
         receiveFile(fileSize);
     }
     
     private void receiveFile(Integer fileSize){
         try {
             File file = new File(root.toString() + directory + filepath);
-            //byte[] b = new byte[fileSize];
             
+            Long timeout = new Date().getTime() + fileSize/8;
             if ("A".equals(sendMode)) {
-                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, ("APP".equals(storMode))?(false):(true)))) {
+                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
+                        if (new Date().getTime() >= timeout){
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            return;
+                        }
                         bufferedStream.write(inFromClient.read());
                     }
-                    System.out.println("Closing ASCII File");
                     bufferedStream.flush();
                     bufferedStream.close();
-                } catch (IOException e){
-                    socket.close();
                 }
             } else {
-                try (FileOutputStream fileStream = new FileOutputStream(file, ("APP".equals(storMode))?(false):(true))) {
+                try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
                     int e;
-                    while((e = binFromClient.read()) !=1) {
-                        fileStream.write(e);
+                    byte[] bytes = new byte[(int) fileSize];
+                    while (true) {
+                        e = binFromClient.read(bytes);
+                        if (new Date().getTime() >= timeout){
+                            System.out.println("Transfer taking too long. Timed out after " + fileSize/8/1000 + " seconds.");
+                            return;
+                        }
+                        fileStream.write(bytes, 0, e);
+                        if (e < 8192){
+                            break;
+                        }
                     }
-                    System.out.println("Closing Binary File");
                     fileStream.flush();
                     fileStream.close();
-                } catch (IOException e){
-                    socket.close();
                 }
             }
             sendToClient("+Saved " + filepath);
         } catch (FileNotFoundException f){
-            System.out.println("-Couldn't save because Local FTP directory does not exist.");
+            if (SFTPServer.DEBUG) System.out.println("-Couldn't save because Local FTP directory does not exist.");
         } catch (IOException i){
-            System.out.println("-Couldn't save because you do not have permission to write to directory");
+            if (SFTPServer.DEBUG) System.out.println("-Couldn't save because you do not have permission to write to directory");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -682,7 +669,7 @@ public class Instance extends Thread{
             in.close();
 
             int ascii = 0;
-            int other = 0;
+            int binary = 0;
 
             for(int i = 0; i < data.length; i++) {
                 byte b = data[i];
@@ -690,17 +677,14 @@ public class Instance extends Thread{
 
                 if( b == 0x09 || b == 0x0A || b == 0x0C || b == 0x0D ) ascii++;
                 else if( b >= 0x20  &&  b <= 0x7E ) ascii++;
-                else other++;
+                else binary++;
             }
 
-            if( other == 0 ) return false;
+            if( binary == 0 ) return false;
 
-            return 100 * other / (ascii + other) > 95;
+            return 100 * binary / (ascii + binary) > 95;
         } catch (FileNotFoundException ex) {
-            //Logger.getLogger(Instance.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException io){
-            
-        }
+        } catch (IOException io){}
         return false;
     }
     
@@ -716,25 +700,22 @@ public class Instance extends Thread{
                     socket.close();
                     break;
                 } catch (IOException s){
-                    System.out.println("Socket could not be closed");
+                    if (SFTPServer.DEBUG) System.out.println("Socket could not be closed");
                 }
             }
-            if ((char) c == '\0') {
-                break;
-            }
-            if (c != '\0') text = text + (char) c;
+            if ((char) c == '\0') break;
+            if ((char) c != '\0') text = text + (char) c;
         }
-        //System.out.println(text);
         return text;
     }
     
     private void sendToClient(String text) {
         try {
-            System.out.println("OUT: " + text + "\0");
+            if (SFTPServer.DEBUG) System.out.println("OUT: " + text + "\0");
             outToClient.writeBytes(text + "\0");
         } catch (IOException lineErr) {
             try {
-                // catch empty strings, but do nothing
+                // if IOError close socket as client is already closed
                 socket.close();
             } catch (IOException ex) {
             }
@@ -771,8 +752,7 @@ public class Instance extends Thread{
         return true;
     }
     
-    private boolean verify(String[] args) throws Exception{        
-        System.out.println(root.toString() + directory + dirpath + "/.restrict");
+    private boolean verify() throws Exception{        
         File file = new File(root.toString() + directory + dirpath + "/.restrict");
         BufferedReader reader = null;
         String text;
@@ -795,17 +775,17 @@ public class Instance extends Thread{
                 }
             }
         } catch (FileNotFoundException e) {
-            System.out.println("Unrestricted Folder");
+            if (SFTPServer.DEBUG) System.out.println("Unrestricted Folder");
             return true;
         } catch (IOException e) {
-            System.out.println("IO Exception");
+            if (SFTPServer.DEBUG) System.out.println("IO Exception");
         } finally {
             try {
                 if (reader != null) {
                     reader.close();
                 }
             } catch (IOException e) {
-                System.out.println("IO Exception on file close");
+                if (SFTPServer.DEBUG) System.out.println("IO Exception on file close");
             }
         }
         return false;

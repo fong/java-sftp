@@ -21,6 +21,7 @@ public class SFTPServer {
      * @param args the command line arguments
      * @throws java.lang.Exception
      */
+    static boolean DEBUG = false;
     
     static String mode;
     static String list;
@@ -31,19 +32,7 @@ public class SFTPServer {
     static BufferedReader inFromClient;
     static DataOutputStream outToClient;
     
-    public static void main(String[] args) throws Exception {
-        // TODO code application logic here
-        boolean authOK = false;
-        
-//      // CLI authentication text file  
-//        while (!authOK){
-//            System.out.println("Please enter path to authentication file (auth.txt): ");
-//            System.out.print("> ");
-//            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-//            String filePath = br.readLine(); 
-//            authOK = auth.setAuthPath(filePath);
-//        }
-    
+    public static void main(String[] args) throws Exception {    
         // Program argument authentication text file
         if (args.length == 2){
             if (!setAuthPath(args[1])){

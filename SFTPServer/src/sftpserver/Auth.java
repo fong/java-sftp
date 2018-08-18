@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.*;
 
 /*
  * Auth.txt File Format
@@ -40,9 +39,7 @@ public class Auth {
         BufferedReader reader = null;
         String text;
         String response = null;
-        
-        System.out.println("USER");
-        
+                
         userVerification = false;
         accountVerification = false;
         passwordVerification = false;
@@ -64,16 +61,16 @@ public class Auth {
                 }
             }
         } catch (FileNotFoundException e) {
-            System.out.println("File Not Found");
+            if (SFTPServer.DEBUG) System.out.println("File Not Found in class AUTH, method USER");
         } catch (IOException e) {
-            System.out.println("IO Exception");
+            if (SFTPServer.DEBUG) System.out.println("IO Exception in class AUTH, method USER");
         } finally {
             try {
                 if (reader != null) {
                     reader.close();
                 }
             } catch (IOException e) {
-                System.out.println("IO Exception on file close");
+                if (SFTPServer.DEBUG) System.out.println("IO Exception on file close");
             }
         }
                 
@@ -124,9 +121,6 @@ public class Auth {
     }
     
      public String pass(String passText) throws Exception {
-        System.out.println(user);
-        System.out.println(Arrays.toString(accounts));
-        System.out.println(password);
          
         if ("".equals(password) && !accountVerification){
             passwordVerification = true;

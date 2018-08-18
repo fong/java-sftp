@@ -5,16 +5,13 @@ import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 
-/**
- *
- * @author tofupudding
- */
-
 public class SFTPClient {
 
     /**
      * @param args the command line arguments
      */
+    static boolean DEBUG = false;
+    
     static String[] sftpCommands;
     static String mode;
     
@@ -36,8 +33,6 @@ public class SFTPClient {
     static boolean running = true;
 
     public static void main(String[] args) throws Exception{
-        // TODO code application logic here
-        //SFTPClient client = new SFTPClient();
         System.out.println("FTP folder: " + ftp.toString());
         new File(ftp.toString()).mkdirs();
         
@@ -51,13 +46,12 @@ public class SFTPClient {
             
             try{
                 socket = new Socket(ip, port);
-                //outToServer =  new DataOutputStream(socket.getOutputStream());
+
                 outToServer = new DataOutputStream(socket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                
+
                 binToServer = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
                 binFromServer = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-                //inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));   
                 
                 System.out.println("Client connected to " + ip + " port " + port);
                 System.out.println(readFromServer());
@@ -86,7 +80,7 @@ public class SFTPClient {
         
         for (String sftpCommand : sftpCommands){
             if (commands[0].equals(sftpCommand)){
-                System.out.println(sftpCommand);
+                if (DEBUG) System.out.println(sftpCommand);
                 mode = sftpCommand;
                 noCommand = true;
                 return commands;
@@ -181,19 +175,6 @@ public class SFTPClient {
             sendToServer(mode + " " + commandArgs[1]);
             validAuth = true;
             System.out.println(readFromServer());
-//            String serverResponse = readFromServer();
-//            try {
-//                if ("!".equals(serverResponse.substring(0, 1))) {
-//                    validAuth = true;
-//                    System.out.println("login valid");
-//                    System.out.println(serverResponse);
-//                } else {
-//                    System.out.println(serverResponse);
-//                }
-//            } catch (Exception e){
-//                e.printStackTrace();
-//                System.out.println(serverResponse);
-//            }
         }
     }
     
@@ -208,6 +189,7 @@ public class SFTPClient {
                     System.out.println(serverResponse);
                     break;
                 default:
+                    System.out.println(serverResponse);
                     break;
             }
         } else {
@@ -303,9 +285,8 @@ public class SFTPClient {
     }
         
     public static void send(){
-        sendToServer("SEND ");
         try {
-            File file = new File(ftp.getPath() + "/" + filename);
+            File file = new File(ftp.getPath() + "/" + filename); 
             Long timeout = new Date().getTime() + fileSize/8;
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
@@ -343,9 +324,9 @@ public class SFTPClient {
         } catch (SocketException s){
             System.out.println("Server connection was closed before file finshed transfer.");
         } catch (Exception e) {
-            e.printStackTrace();
+            if (DEBUG) e.printStackTrace();
         } 
-}
+    }
     
     public static void stopRetr(){
         sendToServer("STOP ");
@@ -360,25 +341,53 @@ public class SFTPClient {
             for (int i = 2; i < commandArgs.length; i++){
                 resp = (i == commandArgs.length-1) ? (resp += commandArgs[i]) : (resp += commandArgs[i] + " ");
             }
+            
+            File file = new File(ftp.getPath() + "/" + resp);
+
+            if (isBinary(file) && "A".equals(sendMode)){
+                System.out.println("-File is Binary. Switching to TYPE B");
+                sendToServer("TYPE B");
+                String serverResponse = readFromServer();
+                if ("+".equals(serverResponse.substring(0, 1))){
+                    System.out.println(serverResponse);
+                } else {
+                    System.out.println(serverResponse);
+                    System.out.println("STOR canceled.");
+                    return;
+                }
+            } else if (!isBinary(file) && ("B".equals(sendMode) || "C".equals(sendMode))){
+                System.out.println("-File is ASCII. Current TYPE is B or C. Please switch to A");
+                sendToServer("TYPE A");
+                String serverResponse = readFromServer();
+                if ("+".equals(serverResponse.substring(0, 1))){
+                    System.out.println(serverResponse);
+                } else {
+                    System.out.println(serverResponse);
+                    System.out.println("STOR canceled.");
+                    return;
+                }
+            }
+            
             sendToServer("STOR " + commandArgs[1] + " " + resp);
             String serverResponse = readFromServer();
+            
             if ("+".equals(serverResponse.substring(0,1))){
-                File file = new File(ftp.getPath() + "/" + resp);
                 System.out.println(serverResponse + ". Sending SIZE " + file.length());
                 sendToServer("SIZE " + file.length());
-                
                 serverResponse = readFromServer();
                 System.out.println(serverResponse);
+                
                 if ("+".equals(serverResponse.substring(0,1))){
-                    System.out.println("Sending file");
-                    System.out.println(file.length());
+                    System.out.println("Sending file...");
 
                     byte[] bytes = new byte[(int) file.length()];
 
                     try {
+                        System.out.println(sendMode);
                         if ("A".equals(sendMode)){
                             // Read and send by byte
                             try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
+                                outToServer.flush();
                                 // Read and send by byte
                                 int p = 0;
                                 while ((p = bufferedStream.read(bytes)) >= 0) {
@@ -386,22 +395,27 @@ public class SFTPClient {
                                 }
                                 bufferedStream.close();
                                 outToServer.flush();
+                            } catch (IOException e){
+                                socket.close();
                             }
                         } else {
                             try (FileInputStream fileStream = new FileInputStream(file)) {
                                 binToServer.flush();
                                 int e;
-                                while((e = fileStream.read()) != 1) {
-                                    binToServer.write(e);
+                                while ((e = fileStream.read()) >= 0) {
+                                  //System.out.println("Writing: " + e);
+                                  binToServer.write(e);
                                 }
                                 fileStream.close();
                                 binToServer.flush();
+                            } catch (IOException e){
+                                socket.close();
                             }
                         }
                         serverResponse = readFromServer();
                         System.out.println(serverResponse);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        if (DEBUG) e.printStackTrace();
                     }
                 } else {
                     System.out.println(serverResponse);
@@ -412,6 +426,38 @@ public class SFTPClient {
         }
     }
 
+    private static boolean isBinary(File file){
+        FileInputStream in;
+        try {
+            in = new FileInputStream(file);
+            int size = in.available();
+            if(size > 1024) size = 1024;
+            byte[] data = new byte[size];
+            in.read(data);
+            in.close();
+
+            int ascii = 0;
+            int other = 0;
+
+            for(int i = 0; i < data.length; i++) {
+                byte b = data[i];
+                if( b < 0x09 ) return true;
+
+                if( b == 0x09 || b == 0x0A || b == 0x0C || b == 0x0D ) ascii++;
+                else if( b >= 0x20  &&  b <= 0x7E ) ascii++;
+                else other++;
+            }
+
+            if( other == 0 ) return false;
+
+            return 100 * other / (ascii + other) > 95;
+        } catch (FileNotFoundException ex) {
+            //Logger.getLogger(Instance.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException io){
+            
+        }
+        return false;
+    }
     
     private static String readFromServer() {
         String text = "";
@@ -420,7 +466,6 @@ public class SFTPClient {
         while (true){
             try {
                 c = inFromServer.read();
-                System.out.println(c);
                 if ((char) c == '\0' && text.length() > 0) {
                     break;
                 }
@@ -429,20 +474,18 @@ public class SFTPClient {
             }
             if (c != '\0') text = text + (char) c;
         }
-        System.out.println("IN: " + text);
+        if (DEBUG) System.out.println("IN: " + text);
         return text;
     }
     
     private static void sendToServer(String text) {
         try {
-            System.out.println("OUT: " + text + "\0");
+            if (DEBUG) System.out.println("OUT: " + text + "\0");
             outToServer.writeBytes(text + "\0");
-        } catch (IOException lineErr) {
+        } catch (IOException i) {
             try {
                 socket.close();
-            } catch (IOException e){
-                
-            }
+            } catch (IOException e){ }
         }
     }
 }
