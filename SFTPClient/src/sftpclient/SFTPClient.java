@@ -30,7 +30,9 @@ public class SFTPClient {
     static BufferedReader inFromServer;
     static DataOutputStream binToServer;
     static DataInputStream binFromServer;
+    
     static boolean running = true;
+    static boolean retr = false;
 
     public static void main(String[] args) throws Exception{
         System.out.println("FTP folder: " + ftp.toString());
@@ -281,6 +283,7 @@ public class SFTPClient {
                 System.out.println(serverResponse);
             } else {
                 fileSize = Integer.parseInt(serverResponse);
+                retr = true;
                 System.out.println("File Size:  "+ fileSize);
                 System.out.println("Use SEND to retrieve file or STOP to cancel.");
             }
@@ -288,39 +291,46 @@ public class SFTPClient {
     }
         
     public static void send(){
+        if (!retr){
+            System.out.println("Nothing to send.");
+            return;
+        }
         sendToServer("SEND ");
         try {
             File file = new File(ftp.getPath() + "/" + filename); 
-            Long timeout = new Date().getTime() + fileSize/32 + 32; //offset if filesize is 1 byte
+            Long timeout = new Date().getTime() + (fileSize/8 + 8)*1000; //offset if filesize is 1 byte
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             return;
                         }
                         bufferedStream.write(inFromServer.read());
                     }
                     bufferedStream.flush();
                     bufferedStream.close();
+                    System.out.println("File " + filename + " was saved.");
+                    retr = false;
                 }
             } else {
                 try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
                     int e;
+                    int i = 0;
                     byte[] bytes = new byte[(int) fileSize];
-                    while (true) {
+                    while (i < fileSize) {
                         e = binFromServer.read(bytes);
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             return;
                         }
                         fileStream.write(bytes, 0, e);
-                        if (e < 8192){
-                            break;
-                        }
+                        i+=e;
                     }
                     fileStream.flush();
                     fileStream.close();
+                    System.out.println("File " + filename + " was saved.");
+                    retr = false;
                 }
             }
         } catch (FileNotFoundException n){
@@ -338,8 +348,8 @@ public class SFTPClient {
     }
     
     public static void stor(String[] commandArgs) throws Exception {
-        if (commandArgs.length < 2){
-            System.out.println("ARG ERROR: Not enough arguments. STOR <new-filename> required");
+        if (commandArgs.length < 3){
+            System.out.println("ARG ERROR: Not enough arguments. STOR { NEW | OLD | APP } <new-filename> required");
         } else {
             String resp = "";
             for (int i = 2; i < commandArgs.length; i++){

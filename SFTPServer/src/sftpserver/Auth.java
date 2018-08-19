@@ -86,6 +86,10 @@ public class Auth {
                 
             if (passwordVerification && accountVerification){
                 response = "!" + user + " logged in";
+            } else if (passwordVerification && !accountVerification){
+                response = "+User-id valid, send account";
+            } else if (!passwordVerification && accountVerification){
+                response = "+User-id valid, send password";  
             } else {
                 response = "+User-id valid, send account and password";
             }   

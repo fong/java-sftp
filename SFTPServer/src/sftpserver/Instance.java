@@ -66,7 +66,7 @@ public class Instance extends Thread{
                 clientCmd = readFromClient().split(" "); 
                 
                 if (clientCmd[0].equals("DONE")){
-                    sendToClient("+Closing connection. A total of " + totalIO/1000 + "kB was transferred\0");
+                    sendToClient("+Closing connection. A total of " + totalIO/1000 + "kB was transferred.\0");
                     socket.close();
                     running = false;
                     break;
@@ -191,8 +191,6 @@ public class Instance extends Thread{
     
     // LIST { F | V } directory-path
     public void list(String[] args) throws Exception{
-        
-        //String listDirectory = "/";
         list = args[1];
         long totalFileSize = 0;
         int nFiles = 0;
@@ -287,10 +285,10 @@ public class Instance extends Thread{
                 sendToClient(response.toString());
             } catch (IOException | DirectoryIteratorException | InvalidPathException x) {
                 if (SFTPServer.DEBUG) System.err.println(x);
-                dirpath = "";
                 sendToClient("-" + x.toString());
             }
         }
+        dirpath = "";
     }
     
     public void cdir(String[] args) throws Exception{
@@ -606,12 +604,12 @@ public class Instance extends Thread{
     private void receiveFile(Integer fileSize){
         try {
             File file = new File(root.toString() + directory + filepath);
-            Long timeout = new Date().getTime() + fileSize/32 + 32; //offset if filesize is 1 byte
+            Long timeout = new Date().getTime() + (fileSize/8 + 8)*1000; //offset if filesize is 1 byte
             if ("A".equals(sendMode)) {
-                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
+                try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, "APP".equals(storMode)))) {
                     for (int i = 0; i < fileSize; i++) {
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             bufferedStream.flush();
                             bufferedStream.close();
                             return;
@@ -623,21 +621,20 @@ public class Instance extends Thread{
                     totalIO += fileSize;
                 }
             } else {
-                try (FileOutputStream fileStream = new FileOutputStream(file, false)) {
+                try (FileOutputStream fileStream = new FileOutputStream(file, "APP".equals(storMode))) {
                     int e;
+                    int i = 0;
                     byte[] bytes = new byte[(int) fileSize];
-                    while (true) {
+                    while (i < fileSize) {
                         e = binFromClient.read(bytes);
                         if (new Date().getTime() >= timeout){
-                            System.out.println("Transfer taking too long. Timed out after " + fileSize/32/1000 + " seconds.");
+                            System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             fileStream.flush();
                             fileStream.close();
                             return;
                         }
                         fileStream.write(bytes, 0, e);
-                        if (e < 8192){
-                            break;
-                        }
+                        i+=e;
                     }
                     fileStream.flush();
                     fileStream.close();

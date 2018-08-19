@@ -1,3 +1,0 @@
-ONLYUSER  
-TSTUSR  pw
-ACCUSR acc1|acc2|acc3 pw2

@@ -17,10 +17,24 @@
     1. [SFTPServer](#sftpserver)
     2. [SFTPClient](#sftpclient)
     3. [Authentication File](#authentication-file)
-    4. [FTP Folder](#ftp-folder)
+    4. [FTP Folder](#ftp-folder-ftp)
     5. [Restricted Folders](#restricted-folders)
 3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
 4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
+5. [Command Guide](#command-guide)
+    1. [USER, ACCT and PASS Commands](#user-acct-and-pass-commands)
+    2. [TYPE Command](#type-command)
+    3. [LIST Command](#list-command)
+    4. [CDIR Command](#cdir-command)
+    5. [KILL Command](#kill-command)
+    6. [NAME Command](#name-command)
+    7. [DONE Command](#done-command)
+    8. [RETR Command](#retr-command)
+    9. [STOR Command](#stor-command)
+6. [Use Cases](#use-cases)
+    1. [Example 1](#example-1)
+    2. [Example 2](#example-2)
+    3. [Example 3](#example-3)
  
 ## Introduction
 
@@ -73,16 +87,89 @@ Folders in the FTP folder can be restricted with the use of a ```.restrict``` fi
 6. Add files and Folder to the ```ftp``` directory.
 7. If you would like to create a folder with restricted access, add a ```.restrict``` file to the directory you want restricted. Similar to the authentication file, this is a text file. However, the format is as follows: ```ACCOUNT PASSWORD```. Multiple accounts are separated by a ```|```. For Example, ```ACC1|ACC2 PASS```. If the client's credentials match the account/s and password, they are given access to the folder.
 
-## How to setup Client and run
+## How to setup SFTPClient and run
 1. Compile SFTPClient by opening the folder ```SFTPClient\src\sftpclient``` in the command prompt. Use the command ```javac *.java``` to compile to class files.
 2. From the ```sftpclient``` folder, execute your SFTPClient with the command ```java -cp ../ sftpclient.SFTPClient {IP} {PORT}```. For example, ```java -cp ../ sftpserver.SFTPServer localhost 15100```. If the server is not online, or unable to be connected, a ```Connection refused. Server may not be online.``` error will appear.
 
-## Use Cases:
+## Command Guide:
+
+##### **Prefix Symbol Guide**
+```!```, ```+``` and ```-``` lines are server responses (with the exception of file size for ```RETR```).
+```>``` indicates a command by the client.
 
 ### ***USER***, ***ACCT*** and ***PASS*** Commands
 
+#### **Default Examples**
+
+***User only***: 
+
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> LIST F
++
+auckland.png
+ChromeSetup.exe
+client-20180816.txt
+client.txt
+CS725ASSIGNMENT1.pdf
+de1-soc-user-manual.pdf
+Folder
+g4144.jpg
+mainscreen.png
+node-v8.11.1-x64.msi
+Restricted Folder
+test.txt
+
+> 
+```
+
+***User and Password Only***
+
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYPASS
++User-id valid, send account and password
+> LIST F
+-Cannot use LIST. Not logged in
+> PASS pw
+!Account valid, logged-in
+> 
+```
+
+***User and Account Only***
+**Note:** If the user only has one account (e.g. USER ACC1), the user will be automatically logged in and all billing will be charged onto that one account. If the user has two or more accounts (e.g. USER ACC1|ACC2|ACC3), then the user will be prompted to pick one of the accounts.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYACC
++User-id valid, send account and password
+> ACCT acc2
+!Account valid, logged-in
+```
+
+***User, Account, and Password***
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ALL
++User-id valid, send account and password
+> ACCT acc2
++Account valid, send password
+> PASS pw2
+!Account valid, logged-in
+> 
+```
+
 ### ***TYPE*** Command
-##### *Default Example*
+#### **Default Example**
 This example illustates a normal use case of the TYPE command. It can switch between ASCII (A), Binary (B), and Continuous (C).
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -98,7 +185,7 @@ Client connected to localhost port 11510
 +Using Ascii mode
 ```
 
-##### *Error Cases*
+#### **Error Cases**
 This is the response from the server if the type is not A, B or C. File transfer type is not changed on the client or the server.
 ```
 > TYPE D
@@ -106,7 +193,7 @@ This is the response from the server if the type is not A, B or C. File transfer
 ```
 
 ### ***LIST*** Command
-##### *Default Examples*
+#### ****Default Examples****
 This is an example of the basic ```LIST F``` command, it only shows the names of the files and directories.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -121,7 +208,6 @@ client.txt
 CS725ASSIGNMENT1.pdf
 Folder
 g4144.jpg
-jdk.exe
 mainscreen.png
 Restricted Folder
 test.txt
@@ -140,15 +226,14 @@ This is an example of the basic ```LIST V``` command, it shows the names and met
 |CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
 |Folder                                         DIR |R/W|     0 kB|18/08/18 11:40:18 PM|tofurky\tofutaco  |
 |g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
-|jdk.exe                                        BIN |R/W|145071 kB|26/04/18 12:01:42 AM|tofurky\tofutaco  |
 |mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
 |Restricted Folder                              DIR |R/W|     4 kB|18/08/18 11:43:24 PM|tofurky\tofutaco  |
 |test2.txt                                      ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
-7 File(s)	 2 Dir(s)	 145208kB Total File Size
+6 File(s)	 2 Dir(s)	 140kB Total File Size
 ```
 
-##### *Other Cases*
-You can list other folders by adding an additional argument to the directory after the list type. This works for both ```LIST F``` and 
+#### **Other Cases**
+***Listing other folders***: You can list other folders by adding an additional argument to the directory after the list type. This works for both ```LIST F``` and 
 ```
 > LIST F Folder
 +/Folder
@@ -156,9 +241,37 @@ goodbyeworld.txt
 RFC 913 - Simple File Transfer Protocol.html
 ```
 
-##### *Error Cases*
+***List and working directories***: ```LIST``` does not change the working directory of the user. This follows a similar design to ```ls``` and ```dir``` on Windows.
+```
+> LIST F Folder
++/Folder
+Another Folder
+avalon-mm.png
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+todelete.txt
 
-***You do not have permission to view the folder***: If the folder has ```.restrict``` file and your account is not inside, the folder is inaccessible.
+> LIST F
++
+auckland.png
+ChromeSetup.exe
+client-20180816.txt
+client.txt
+CS725ASSIGNMENT1.pdf
+de1-soc-user-manual.pdf
+Folder
+g4144.jpg
+mainscreen.png
+node-v8.11.1-x64.msi
+Restricted Folder
+test.txt
+
+> 
+```
+
+#### **Error Cases**
+
+***You do not have permission to view the folder***: If the folder has ```.restrict``` file and your account is not listed, the folder is inaccessible. The client will need to ```CDIR``` to the restricted directory to be prompted with the folder's account and password.
 
 ```
 > LIST F Restricted Folder
@@ -173,8 +286,8 @@ RFC 913 - Simple File Transfer Protocol.html
 
 ### ***CDIR*** Command
 
-##### *Default Examples*
-***Unrestricted Folder***: This example illustrates a normal use case of the CDIR command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
+#### ****Default Examples****
+***Unrestricted Folder***: This example illustrates a normal use case of the ```CDIR``` command. At the end of these commands, the working directory is changed, as shown by the second ```LIST F``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -188,7 +301,6 @@ client.txt
 CS725ASSIGNMENT1.pdf
 Folder
 g4144.jpg
-jdk.exe
 mainscreen.png
 Restricted Folder
 test2.txt
@@ -215,7 +327,6 @@ RFC 913 - Simple File Transfer Protocol.html
 .restrict
 auckland.PNG
 mypasswords.txt
-todelete - Copy.txt
 vanilla-tilt.js
 
 > 
@@ -237,14 +348,13 @@ vanilla-tilt.js
 .restrict
 auckland.PNG
 mypasswords.txt
-todelete - Copy.txt
 vanilla-tilt.js
 
 > 
 ```
 
-***Other Cases***
-To go back to the root of the FTP server, send CDIR without arguments
+#### **Other Cases**
+To go back to the root of the FTP server, send ``CDIR`` without arguments
 ```
 > CDIR Folder
 !Changed working dir to /Folder
@@ -265,7 +375,7 @@ To access a folder within a folder, include the folder path from the root of the
 > 
 ```
 
-##### *Error Cases*
+#### **Error Cases**
 ***Folder does not exist***: An error is presented and the working directory does not change.
 ```
 > CDIR Missing Folder
@@ -275,8 +385,8 @@ To access a folder within a folder, include the folder path from the root of the
 
 ### ***KILL*** Command
 
-##### *Default Example*
-This example illustrates a normal use case of the KILL command. At the end of these commands, the file todelete.txt is deleted from the system.
+#### **Default Example**
+This example illustrates a normal use case of the ```KILL``` command. At the end of these commands, the file todelete.txt is deleted from the system.
 ```
 > LIST F
 +/Restricted Folder
@@ -298,7 +408,7 @@ vanilla-tilt.js
 > 
 ```
 
-##### *Error cases*
+#### **Error Cases**
 ***File is protected***: If the file is set to read-only, the file cannot be deleted and the following response will occur.
 ```
 +/Restricted Folder/
@@ -338,8 +448,8 @@ Client connected to localhost port 11510
 ```
 
 ### ***NAME*** Command
-##### *Default Example*
-This example illustrates a normal use case of the NAME command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
+#### **Default Example**
+This example illustrates a normal use case of the ```NAME``` command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer by examining the contents of the text file before and after executing the ```TOBE``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -365,9 +475,9 @@ test.txt
 > 
 ```
 
-##### *Other Cases*
+#### **Other Cases**
 
-***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system.  This can be verified in the system file explorer.
+***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system. This can be verified in the system file explorer by examining the contents of the text file before and after executing the ```TOBE``` command.
 
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -382,7 +492,7 @@ Client connected to localhost port 11510
 > 
 ```
 
-***Renaming a file with commands in between***: The TOBE command is not bound to the NAME command. If the user wants to use other commands, they can do so. For example, if the user was to change the name, but is uncertain what other files are in the folder, they can use the ```LIST``` command before using the TOBE command.
+***Renaming a file with commands in between***: The ```TOBE``` command is not bound to the ```NAME``` command. If the user wants to use other commands, they can do so. For example, if the user was to change the name, but is uncertain what other files are in the folder, they can use the ```LIST``` command before using the ```TOBE``` command.
 ```
 > NAME test2.txt
 +File exists. Send TOBE <new-name> command.
@@ -403,7 +513,7 @@ test2.txt
 > 
 ```
 
-##### *Error Cases*
+#### **Error Cases**
 ***New filename already exists***: This snippet illustrates the response from the server if the file already exists. The filename will not be changed and can be verified in the system file explorer.
 ```
 > NAME test2.txt
@@ -425,7 +535,7 @@ test2.txt
 ```
 
 ### ***DONE*** Command
-##### Default Examples
+#### ****Default Examples****
 ***No bandwidth used***: Done is used to signal the server that the client is closing down the connection. Both client and server close the socket, and the thread on the server stops. This frees up system resources such as CPU and Memory for other clients to use.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -434,10 +544,10 @@ Client connected to localhost port 11510
 > USER ONLYUSER
 !ONLYUSER logged in
 > DONE
-+Closing connection. A total of 0kB was transferred
++Closing connection. A total of 0kB was transferred.
 ```
 
-***Bandwidth used***: If the user has done any file transfers (either uploading or downloading) it is recorded and displayed when the user uses the ```DONE``` command.
+***Bandwidth used***: If the user has done any file transfers (either uploading or downloading) it is recorded and displayed when the user uses the ```DONE``` command. This can be modified later to include account billing.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -459,12 +569,71 @@ File Size:  4245
 Use SEND to retrieve file or STOP to cancel.
 > SEND
 > DONE
-+Closing connection. A total of 17kB was transferred
++Closing connection. A total of 17kB was transferred.
+```
+
+### ***RETR*** Command
+
+```RETR``` commands do not support automatic type swtiching. This is because the server has no method in changing the ```TYPE``` on the client. The server checks the file type and if the current type does not match, it will notify the client that the type does not match. If the type is changed successfully, it will send the file. If the type fails to change, the ```STOR``` command is cancelled.
+
+#### **Default Example**
+This example illustates the file ```test.txt``` being transfer from the server to the client. When the ```STOP``` command is sent, the server response with an abort response and the ```RETR``` process is cancelled. This can be demonstrated by using the command ```SEND```, which returns an error. The file can then be retrieved by using the ```RETR {file}``` command, followed by the ```SEND``` command. Once the correct procedure is executed, the file will be retrieved from the server and placed in the client's ```/ftp``` folder.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> RETR test.txt
+File Size:  27
+Use SEND to retrieve file or STOP to cancel.
+> STOP
++ok, RETR aborted
+> SEND
+Nothing to send.
+> RETR test.txt
+File Size:  27
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+File test.txt was saved.
+> 
+```
+
+#### **Other Cases**
+***This file to retrieve has a different type to the current transmission type***: If the file type does not match the current file transfer type (e.g. file to retrieve is binary, but current mode is ASCII), the server will notify the client that the file type does not match. The ```RETR``` command is cancelled (as demonstrated by a failed ```SEND``` command) and the type must be changed before the file can be retrieved. 
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> RETR mainscreen.png
+-File is Binary. Current TYPE is A. Please switch to B or C
+> SEND
+Nothing to send.
+> TYPE B
++Using Binary mode
+> RETR mainscreen.png
+File Size:  13380
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+File mainscreen.png was saved.
+> 
+```
+
+***The file has taken too long to transfer***: If the file takes too long to transfer, the process will time out and the transfer will be cancelled. This timeout is calculated by ```(filesize/8 + 8)/60``` seconds.
+
+```
+> SEND
+Transfer taking too long. Timed out after 5 seconds.
+>
 ```
 
 ### ***STOR*** Command
 
-##### *Default Examples*
+#### ****Default Examples****
+
+All ```STOR``` commands support automatic type swtiching. The client checks the file type and if the current type does not match, it will automatically send a ```TYPE``` request. If the type is changed successfully, it will send the file. If the type fails to change, the ```STOR``` command is cancelled.
 
 ***Store with new generations***: This example illustates the file ```avalon-mm.png``` being transfer the first time without an existing file. The subsequent additions of ```avalon-mm.png``` create new file generations, based on the format *YYYYMMddHHmmss* (Year, Month, Day, Hour, Seconds). You can verify each stage with the use of ```LIST F``` or ```LIST V```.
 ```
@@ -479,7 +648,6 @@ Client connected to localhost port 11510
 +Using Binary mode
 +File does not exist, will create new file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm.png
 > LIST F
 +/Folder/
@@ -492,12 +660,10 @@ RFC 913 - Simple File Transfer Protocol.html
 +Using Binary mode
 +File exists, will create new generation of file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm-20180819023951.png
 > STOR NEW avalon-mm.png
 +File exists, will create new generation of file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm-20180819024005.png
 > LIST F
 +/Folder/
@@ -509,4 +675,287 @@ goodbyeworld.txt
 RFC 913 - Simple File Transfer Protocol.html
 
 > 
+```
+
+***Store with overwrite previous***: This example illustates the file ```auckland.png``` being transfer the first time without an existing file. The subsequent transferral of a modified ```auckland.png``` will overwrite the previous file. You can verify each stage with the use of ```LIST V``` by observing the change in file size. Alternatively, you can examine the file changes in the system file explorer.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> STOR OLD auckland.png
++Using Binary mode
++Will create new file. Sending SIZE 25862
++ok, waiting for file
++Saved /auckland.png
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    25 kB|19/08/18 3:35:39 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 3:32:00 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR OLD auckland.png
++Will write over old file. Sending SIZE 36540
++ok, waiting for file
++Saved /auckland.png
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 3:32:00 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> 
+```
+***Store with appending***:  This example illustates the file ```test.txt``` being transfer the first time without an existing file. The subsequent transferral of a modified ```test.txt``` will append to the the previous file. You can verify each stage with the use of ```LIST V``` by observing the change in file size and/or last modified date. You can also examine the contents of file appendages by opening the file in the system file explorer.
+
+```
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+7 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR APP test.txt
+-File is ASCII. Current TYPE is B or C. Please switch to A
++Using Ascii mode
++Will create file. Sending SIZE 39
++ok, waiting for file
++Saved /test.txt
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|19/08/18 4:30:41 PM |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR APP test.txt
++Will append to file. Sending SIZE 68
++ok, waiting for file
++Saved /test.txt
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     1 kB|19/08/18 4:31:22 PM |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16837kB Total File Size
+
+> 
+```
+
+#### **Other Cases**
+
+***The file has taken too long to transfer***: If the file takes too long to transfer, the process will time out and the transfer will be cancelled. This timeout is calculated by ```(filesize/8 + 8)/60``` seconds.
+
+```
+> SEND
+Transfer taking too long. Timed out after 5 seconds.
+>
+```
+
+## Use Cases
+
+#### ***Example 1***
+*Commands Used:* ```USER PASS LIST TYPE RETR SEND DONE```
+Retrieve the file ```avalon-mm.png``` file from server. This example is equivalent to the example presented on page 13 of the [RFC 913 specification](https://tools.ietf.org/html/rfc913).
+
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYPASS
++User-id valid, send password
+> PASS pw
+!Account valid, logged-in
+> LIST F Folder
++/Folder
+Another Folder
+avalon-mm.png
+goodbyeworld.txt
+RFC 913 - Simple File Transfer Protocol.html
+todelete.txt
+
+> LIST V Folder
++/Folder
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|Another Folder                                 DIR |R/W|     0 kB|19/08/18 12:38:11 AM|tofurky\tofutaco  |
+|avalon-mm.png                                  BIN |R/W|    30 kB|19/08/18 2:33:19 AM |tofurky\tofutaco  |
+|goodbyeworld.txt                               ASC |R/W|     0 kB|8/08/18 9:36:20 PM  |tofurky\tofutaco  |
+|RFC 913 - Simple File Transfer Protocol.html   ASC |R/W|    33 kB|9/08/18 12:14:08 AM |tofurky\tofutaco  |
+|todelete.txt                                   ASC |R/W|     0 kB|13/08/18 12:02:55 AM|tofurky\tofutaco  |
+4 File(s)	 1 Dir(s)	 63kB Total File Size
+
+> RETR avalon-mm.png
+-PATH ERROR: /avalon-mm.png is not a file.
+> RETR Folder/avalon-mm.png
+-File is Binary. Current TYPE is A. Please switch to B or C
+> TYPE B
++Using Binary mode
+> RETR Folder/avalon-mm.png
+File Size:  30073
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+File avalon-mm.png was saved.
+> DONE
++Closing connection. A total of 30kB was transferred.
+```
+
+#### ***Example 2***
+*Commands Used:* ```USER ACCT LIST RETR SEND STOR LIST DONE```
+This example covers the retrieval and store commands. At the start, the client has the ```client.txt``` and the server has the ```server.txt``` file. By the end of the transactions, both the client and server will have both text files. Note that since the text files are under 1kB, the billing is 0 (as it is measure per kilobyte).
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYACC
++User-id valid, send account
+> ACCT acc2
+!Account valid, logged-in
+> LIST F
++
+ChromeSetup.exe
+CS725ASSIGNMENT1.pdf
+de1-soc-user-manual.pdf
+Folder
+g4144.jpg
+mainscreen.png
+node-v8.11.1-x64.msi
+Restricted Folder
+server.txt
+
+> RETR server.txt
+File Size:  34
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+File server.txt was saved.
+> STOR client.txt
+ARG ERROR: Not enough arguments. STOR { NEW | OLD | APP } <new-filename> required
+> STOR NEW client.txt
++File does not exist, will create new file. Sending SIZE 33
++ok, waiting for file
++Saved /client.txt
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|ChromeSetup.exe                                BIN |R/W|  1065 kB|29/09/16 9:31:22 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|20/08/18 12:31:48 AM|tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|de1-soc-user-manual.pdf                        BIN |R/W|  6635 kB|19/04/18 11:31:43 PM|tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|server.txt                                     ASC |R/W|     0 kB|20/08/18 12:29:29 AM|tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 24496kB Total File Size
+
+> DONE
++Closing connection. A total of 0kB was transferred.
+```
+
+#### ***Example 3***
+*Commands Used:* ```USER ACCT PASS LIST CDIR NAME TOBE KILL LIST DONE```
+Here, a user with the correct credentials access a restricted folder via the ```CDIR``` command. This example covers the ```NAME``` and ```TOBE``` commands. After renaming the file, the file is removed from the server with the command ```KILL```. Each step is verified with the use of the ```LIST F``` command.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ALL
++User-id valid, send account and password
+> ACCT acc2
++Account valid, send password
+> PASS pw2
+!Account valid, logged-in
+> LIST F
++
+ChromeSetup.exe
+client.txt
+CS725ASSIGNMENT1.pdf
+de1-soc-user-manual.pdf
+Folder
+g4144.jpg
+mainscreen.png
+node-v8.11.1-x64.msi
+Restricted Folder
+server.txt
+
+> CDIR Restricted Folder
+!Changed working dir to /Restricted Folder
+> LIST F
++/Restricted Folder
+.restrict
+auckland.PNG
+mypasswords.txt
+vanilla-tilt.js
+
+> NAME mypasswords.txt
++File exists. Send TOBE <new-name> command.
+> TOBE passwords-to-delete.txt
++mypasswords.txt renamed to passwords-to-delete.txt
+> LIST F
++/Restricted Folder/
+.restrict
+auckland.PNG
+passwords-to-delete.txt
+vanilla-tilt.js
+
+> KILL passwords-to-delete.txt
++passwords-to-delete.txt deleted
+> LIST F
++/Restricted Folder/
+.restrict
+auckland.PNG
+vanilla-tilt.js
+
+> DONE
++Closing connection. A total of 0kB was transferred.
 ```
