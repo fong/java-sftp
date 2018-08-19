@@ -22,6 +22,15 @@
 3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
 4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
 5. [Use Cases/Command Guide](#use-casescommand-guide)
+    1. [USER, ACCT and PASS Commands](#user-acct-and-pass-commands)
+    2. [TYPE Command](#type-command)
+    3. [LIST Command](#list-command)
+    4. [CDIR Command](#cdir-command)
+    5. [KILL Command](#kill-command)
+    6. [NAME Command](#name-command)
+    7. [DONE Command](#done-command)
+    8. [RETR Command](#retr-command)
+    9. [STOR Command](#stor-command)
  
 ## Introduction
 
@@ -122,7 +131,6 @@ client.txt
 CS725ASSIGNMENT1.pdf
 Folder
 g4144.jpg
-jdk.exe
 mainscreen.png
 Restricted Folder
 test.txt
@@ -141,11 +149,10 @@ This is an example of the basic ```LIST V``` command, it shows the names and met
 |CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
 |Folder                                         DIR |R/W|     0 kB|18/08/18 11:40:18 PM|tofurky\tofutaco  |
 |g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
-|jdk.exe                                        BIN |R/W|145071 kB|26/04/18 12:01:42 AM|tofurky\tofutaco  |
 |mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
 |Restricted Folder                              DIR |R/W|     4 kB|18/08/18 11:43:24 PM|tofurky\tofutaco  |
 |test2.txt                                      ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
-7 File(s)	 2 Dir(s)	 145208kB Total File Size
+6 File(s)	 2 Dir(s)	 140kB Total File Size
 ```
 
 #### *Other Cases*
@@ -189,7 +196,6 @@ client.txt
 CS725ASSIGNMENT1.pdf
 Folder
 g4144.jpg
-jdk.exe
 mainscreen.png
 Restricted Folder
 test2.txt
@@ -216,7 +222,6 @@ RFC 913 - Simple File Transfer Protocol.html
 .restrict
 auckland.PNG
 mypasswords.txt
-todelete - Copy.txt
 vanilla-tilt.js
 
 > 
@@ -238,7 +243,6 @@ vanilla-tilt.js
 .restrict
 auckland.PNG
 mypasswords.txt
-todelete - Copy.txt
 vanilla-tilt.js
 
 > 
@@ -340,7 +344,7 @@ Client connected to localhost port 11510
 
 ### ***NAME*** Command
 #### *Default Example*
-This example illustrates a normal use case of the ```NAME``` command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer.
+This example illustrates a normal use case of the ```NAME``` command. At the end of these commands, the file test.txt is renamed to test2.txt within the system. This can be verified in the system file explorer by examining the contents of the text file before and after executing the ```TOBE``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -368,7 +372,7 @@ test.txt
 
 #### *Other Cases*
 
-***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system.  This can be verified in the system file explorer.
+***Renaming a file in another folder***: This snippet illustates the response if the file is in another folder.  At the end of these commands, the file helloworld.txt is renamed to goodbyeworld.txt within the system. This can be verified in the system file explorer by examining the contents of the text file before and after executing the ```TOBE``` command.
 
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -435,10 +439,10 @@ Client connected to localhost port 11510
 > USER ONLYUSER
 !ONLYUSER logged in
 > DONE
-+Closing connection. A total of 0kB was transferred
++Closing connection. A total of 0kB was transferred.
 ```
 
-***Bandwidth used***: If the user has done any file transfers (either uploading or downloading) it is recorded and displayed when the user uses the ```DONE``` command.
+***Bandwidth used***: If the user has done any file transfers (either uploading or downloading) it is recorded and displayed when the user uses the ```DONE``` command. This can be modified later to include account billing.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 Client connected to localhost port 11510
@@ -460,12 +464,35 @@ File Size:  4245
 Use SEND to retrieve file or STOP to cancel.
 > SEND
 > DONE
-+Closing connection. A total of 17kB was transferred
++Closing connection. A total of 17kB was transferred.
+```
+
+### ***RETR*** Command
+
+#### *Default Example*
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> RETR test.txt
+File Size:  27
+Use SEND to retrieve file or STOP to cancel.
+> STOP
++ok, RETR aborted
+> RETR test.txt
+File Size:  27
+Use SEND to retrieve file or STOP to cancel.
+> SEND
+> 
 ```
 
 ### ***STOR*** Command
 
 #### *Default Examples*
+
+All ```STOR``` commands support automatic type swtiching. The client checks the file type and if the current type does not match, it will automatically send a ```TYPE``` request. If the type is changed successfully, it will send the file. If the type fails to change, the ```STOR``` command is cancelled.
 
 ***Store with new generations***: This example illustates the file ```avalon-mm.png``` being transfer the first time without an existing file. The subsequent additions of ```avalon-mm.png``` create new file generations, based on the format *YYYYMMddHHmmss* (Year, Month, Day, Hour, Seconds). You can verify each stage with the use of ```LIST F``` or ```LIST V```.
 ```
@@ -480,7 +507,6 @@ Client connected to localhost port 11510
 +Using Binary mode
 +File does not exist, will create new file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm.png
 > LIST F
 +/Folder/
@@ -493,12 +519,10 @@ RFC 913 - Simple File Transfer Protocol.html
 +Using Binary mode
 +File exists, will create new generation of file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm-20180819023951.png
 > STOR NEW avalon-mm.png
 +File exists, will create new generation of file. Sending SIZE 30073
 +ok, waiting for file
-Sending file...
 +Saved /avalon-mm-20180819024005.png
 > LIST F
 +/Folder/
@@ -508,6 +532,119 @@ avalon-mm-20180819024005.png
 avalon-mm.png
 goodbyeworld.txt
 RFC 913 - Simple File Transfer Protocol.html
+
+> 
+```
+
+***Store with overwrite previous***: This example illustates the file ```auckland.png``` being transfer the first time without an existing file. The subsequent transferral of a modified ```auckland.png``` will overwrite the previous file. You can verify each stage with the use of ```LIST V``` by observing the change in file size. Alternatively, you can examine the file changes in the system file explorer.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYUSER
+!ONLYUSER logged in
+> STOR OLD auckland.png
++Using Binary mode
++Will create new file. Sending SIZE 25862
++ok, waiting for file
++Saved /auckland.png
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    25 kB|19/08/18 3:35:39 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 3:32:00 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR OLD auckland.png
++Will write over old file. Sending SIZE 36540
++ok, waiting for file
++Saved /auckland.png
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 3:32:00 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|8/08/18 8:02:07 PM  |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> 
+```
+***Store with appending***:  This example illustates the file ```test.txt``` being transfer the first time without an existing file. The subsequent transferral of a modified ```test.txt``` will append to the the previous file. You can verify each stage with the use of ```LIST V``` by observing the change in file size and/or last modified date. You can also examine the contents of file appendages by opening the file in the system file explorer.
+
+```
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+7 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR APP test.txt
+-File is ASCII. Current TYPE is B or C. Please switch to A
++Using Ascii mode
++Will create file. Sending SIZE 39
++ok, waiting for file
++Saved /test.txt
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     0 kB|19/08/18 4:30:41 PM |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16836kB Total File Size
+
+> STOR APP test.txt
++Will append to file. Sending SIZE 68
++ok, waiting for file
++Saved /test.txt
+> LIST V
++/
+|Name                                               |R/W|Size     |Date                |Owner             |
+|---------------------------------------------------|---|---------|--------------------|------------------|
+|auckland.png                                   BIN |R/W|    36 kB|19/08/18 3:40:43 PM |tofurky\tofutaco  |
+|client-20180816.txt                            ASC |R/W|     4 kB|16/08/18 9:28:05 PM |tofurky\tofutaco  |
+|client.txt                                     ASC |R/W|     0 kB|16/08/18 8:49:03 PM |tofurky\tofutaco  |
+|CS725ASSIGNMENT1.pdf                           BIN |R/W|   115 kB|31/07/18 4:32:04 PM |tofurky\tofutaco  |
+|Folder                                         DIR |R/W|     4 kB|19/08/18 4:18:48 PM |tofurky\tofutaco  |
+|g4144.jpg                                      BIN |R/W|     4 kB|2/04/17 1:59:19 AM  |tofurky\tofutaco  |
+|mainscreen.png                                 BIN |R/W|    13 kB|13/04/17 3:24:23 PM |tofurky\tofutaco  |
+|node-v8.11.1-x64.msi                           BIN |R/W| 16662 kB|17/04/18 12:45:11 AM|tofurky\tofutaco  |
+|Restricted Folder                              DIR |R/W|     4 kB|19/08/18 12:54:33 AM|tofurky\tofutaco  |
+|test.txt                                       ASC |R/W|     1 kB|19/08/18 4:31:22 PM |tofurky\tofutaco  |
+8 File(s)	 2 Dir(s)	 16837kB Total File Size
 
 > 
 ```
