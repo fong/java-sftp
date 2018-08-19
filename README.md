@@ -3,6 +3,7 @@
  
  Eugene Fong (efon103)
  
+ ***Markdown Formatted for Github***
  [github.com/fong/java-sftp](https://github.com/fong/java-sftp)
 
 #### List of Working Features
@@ -165,6 +166,49 @@ Client connected to localhost port 11510
 +Account valid, send password
 > PASS pw2
 !Account valid, logged-in
+> 
+```
+
+#### **Error Cases**
+***User not found***: If a user is not found, the client is not authenticated and cannot use any commands.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER
+ARG ERROR: found 0 arguments, 1 needed. Command format: USER user-id
+> USER FAKEUSER
+-Invalid user-id, try again
+> LIST F
+-Cannot use LIST. Not logged in
+> 
+```
+
+***Account not found***: If a user is found but the account is invalid, the client is not authenticated and cannot use any commands.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYACC
++User-id valid, send account
+> ACCT badaccount
+-Invalid account, try again
+> LIST F
+-Cannot use LIST. Not logged in
+> 
+```
+
+***Password not found***: If a user is found but the account is invalid, the client is not authenticated and cannot use any commands.
+```
+FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
+Client connected to localhost port 11510
++Welcome to Eugene's SFTP RFC913 Server
+> USER ONLYPASS
++User-id valid, send password
+> PASS notpassword
+-Wrong password, try again
+> LIST F
+-Cannot use LIST. Not logged in
 > 
 ```
 
@@ -804,6 +848,7 @@ Transfer taking too long. Timed out after 5 seconds.
 
 #### ***Example 1***
 *Commands Used:* ```USER PASS LIST TYPE RETR SEND DONE```
+
 Retrieve the file ```avalon-mm.png``` file from server. This example is equivalent to the example presented on page 13 of the [RFC 913 specification](https://tools.ietf.org/html/rfc913).
 
 ```
@@ -850,6 +895,7 @@ File avalon-mm.png was saved.
 
 #### ***Example 2***
 *Commands Used:* ```USER ACCT LIST RETR SEND STOR LIST DONE```
+
 This example covers the retrieval and store commands. At the start, the client has the ```client.txt``` and the server has the ```server.txt``` file. By the end of the transactions, both the client and server will have both text files. Note that since the text files are under 1kB, the billing is 0 (as it is measure per kilobyte).
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
@@ -904,6 +950,7 @@ ARG ERROR: Not enough arguments. STOR { NEW | OLD | APP } <new-filename> require
 
 #### ***Example 3***
 *Commands Used:* ```USER ACCT PASS LIST CDIR NAME TOBE KILL LIST DONE```
+
 Here, a user with the correct credentials access a restricted folder via the ```CDIR``` command. This example covers the ```NAME``` and ```TOBE``` commands. After renaming the file, the file is removed from the server with the command ```KILL```. Each step is verified with the use of the ```LIST F``` command.
 ```
 FTP folder: C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp

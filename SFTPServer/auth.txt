@@ -1,0 +1,4 @@
+ONLYUSER  
+ONLYPASS  pw
+ONLYACC acc1|acc2 
+ALL acc1|acc2|acc3 pw2

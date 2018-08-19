@@ -7,9 +7,6 @@ import java.util.*;
 
 public class SFTPClient {
 
-    /**
-     * @param args the command line arguments
-     */
     static boolean DEBUG = false;
     
     static String[] sftpCommands;
