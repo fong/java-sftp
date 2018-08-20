@@ -110,7 +110,7 @@ There are four users:
 * USER and ACC, with username ```ONLYACC``` and accounts ```acc1``` or ```acc2```
 * USER, ACC and PASS, with username ```ALL```, accounts ```acc1``` or ```acc2``` or ```acc3```, and password ```pw2```
 
-**NOTE:** to access the included Restricted Folder, it will need to match one of the account/password combinations listed.
+**NOTE:** to access the included ```Restricted Folder```, it will need to match one of the account/password combinations listed.
 In the included example, the ```.restrict``` file contains:
 ```
 racct|acc2 pw2
@@ -122,6 +122,7 @@ Thus, there are two pairs valid, ```racct``` and ```acc2```, with a common passw
 
 ##### **Prefix Symbol Guide**
 ```!```, ```+``` and ```-``` lines are server responses (with the exception of file size for ```RETR```).
+
 ```>``` indicates a command by the client.
 
 ### ***USER***, ***ACCT*** and ***PASS*** Commands
