@@ -82,7 +82,7 @@ public class Instance extends Thread{
         if (SFTPServer.DEBUG) System.out.println("Closed Thread");
     }
     
-    //mode detected command and routes it the arguments to the correct function
+    //mode detects command and routes it the arguments to the correct function
     public void mode(String[] commandArgs) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"
         switch (commandArgs[0]) {
@@ -732,7 +732,7 @@ public class Instance extends Thread{
                     if (SFTPServer.DEBUG) System.out.println("Socket could not be closed");
                 }
             }
-            if ((char) c == '\0') break;                    //if null, terminate
+            if ((char) c == '\0' && text.length() > 0) break;                    //if null, terminate
             if ((char) c != '\0') text = text + (char) c;   //otherwise add to text buffer
         }
         if (SFTPServer.DEBUG) System.out.println("IN: " + text);
@@ -748,8 +748,7 @@ public class Instance extends Thread{
             try {   // if IOError close socket as client is already closed
                 socket.close();
                 running = false;
-            } catch (IOException ex) {
-            }
+            } catch (IOException ex) {}
         }
     }
     

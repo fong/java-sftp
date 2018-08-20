@@ -4,6 +4,7 @@
  Eugene Fong (efon103)
  
  ***Markdown Formatted for Github***
+ 
  [github.com/fong/java-sftp](https://github.com/fong/java-sftp)
 
 #### List of Working Features
@@ -22,7 +23,8 @@
     5. [Restricted Folders](#restricted-folders)
 3. [How to setup SFTPServer and run](#how-to-setup-sftpserver-and-run)
 4. [How to setup SFTPClient and run](#how-to-setup-sftpclient-and-run)
-5. [Command Guide](#command-guide)
+5. [Default Configurations](#default-configurations)
+6. [Command Guide](#command-guide)
     1. [USER, ACCT and PASS Commands](#user-acct-and-pass-commands)
     2. [TYPE Command](#type-command)
     3. [LIST Command](#list-command)
@@ -32,7 +34,7 @@
     7. [DONE Command](#done-command)
     8. [RETR Command](#retr-command)
     9. [STOR Command](#stor-command)
-6. [Use Cases](#use-cases)
+7. [Use Cases](#use-cases)
     1. [Example 1](#example-1)
     2. [Example 2](#example-2)
     3. [Example 3](#example-3)
@@ -56,7 +58,7 @@ The authentication file is a text file which determines which accounts are **USE
 This is the root of the FTP server. Clients cannot access directories or folders above this level to prevent manipulation of system or private files.
 
 #### Restricted Folders
-Folders in the FTP folder can be restricted with the use of a ```.restrict``` file containing all valid accounts and passwords to the folder. **Note 1:** If there is no ```.restrict``` file, the folder will be public. **Note 2** If there is a ```.restrict``` file with no accounts and passwords, the folder will be inaccessible by any client.
+Folders in the FTP folder can be restricted with the use of a ```.restrict``` file containing all valid accounts and passwords to the folder. To access a restricted folder, the ```.restrict``` file must list both an account and password. **Note 1:** If there is no ```.restrict``` file, the folder will be available publicly. **Note 2** If there is a ```.restrict``` file with no accounts and passwords, the folder will be inaccessible by any client.
 
 ## How to setup SFTPServer and run
 1. Create you authentication text file. This an be done with any text editor. The format of the text file is ```USER ACCT PASS```. Each parameter is separated by a space. If there is no parameter (i.e. no account or no password), ensure that there is still a space in between. If multiple accounts are required separate each account with a ```|```. Each user is declared on a new line. Save it as a .txt file (e.g. ```auth.txt```).
@@ -91,6 +93,30 @@ Folders in the FTP folder can be restricted with the use of a ```.restrict``` fi
 ## How to setup SFTPClient and run
 1. Compile SFTPClient by opening the folder ```SFTPClient\src\sftpclient``` in the command prompt. Use the command ```javac *.java``` to compile to class files.
 2. From the ```sftpclient``` folder, execute your SFTPClient with the command ```java -cp ../ sftpclient.SFTPClient {IP} {PORT}```. For example, ```java -cp ../ sftpserver.SFTPServer localhost 15100```. If the server is not online, or unable to be connected, a ```Connection refused. Server may not be online.``` error will appear.
+
+## Default Configurations
+
+The included authentication text file ```auth.txt``` is as follows:
+
+```
+ONLYUSER  
+ONLYPASS  pw
+ONLYACC acc1|acc2 
+ALL acc1|acc2|acc3 pw2
+```
+There are four users:
+* USER only, with username ```ONLYUSER```
+* USER and PASS, with username ```ONLYPASS``` and password ```pw```
+* USER and ACC, with username ```ONLYACC``` and accounts ```acc1``` or ```acc2```
+* USER, ACC and PASS, with username ```ALL```, accounts ```acc1``` or ```acc2``` or ```acc3```, and password ```pw2```
+
+**NOTE:** to access the included Restricted Folder, it will need to match one of the account/password combinations listed.
+In the included example, the ```.restrict``` file contains:
+```
+racct|acc2 pw2
+otheracc pw3
+```
+Thus, there are two pairs valid, ```racct``` and ```acc2```, with a common password ```pw2```. And another account that can access the folder is the account-password pair ```someacc``` and ```pw3```.
 
 ## Command Guide:
 

@@ -5,35 +5,46 @@ import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 
-public class SFTPClient {
+/*
+ * SFTPClient
+ * @author Eugene Fong (efon103)
+ */
 
-    static boolean DEBUG = false;
+public class SFTPClient {
     
-    static String[] sftpCommands;
-    static String mode;
+    /**
+     * @param ip - Server IP address
+     * @param port - Server Port
+     * @throws java.lang.Exception
+     */
+
+    static boolean DEBUG = false;   //set true is debugging
+    
+    static String[] sftpCommands;   //list of valid commands
+    static String mode;  //Command   
     
     static String ip;
     static int port;
     
-    static boolean validAuth = false;
+    static boolean validAuth = false;   //Boolean if server has received a +logged in
     
-    static String sendMode = "A";
+    static String sendMode = "A";       //A=ASCII, B=Binary, C=Continuous
     static String filename;
     static long fileSize;
-    static File ftp = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
+    static File ftp = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile(); //location of ftp folder
     
     static Socket socket;
-    static DataOutputStream outToServer;
-    static BufferedReader inFromServer;
-    static DataOutputStream binToServer;
-    static DataInputStream binFromServer;
+    static DataOutputStream outToServer;    //ASCII out
+    static BufferedReader inFromServer;     //ASCII in
+    static DataOutputStream binToServer;    //Binary out
+    static DataInputStream binFromServer;   //Binary in
     
     static boolean running = true;
-    static boolean retr = false;
+    static boolean retr = false;    //if RETR is running
 
     public static void main(String[] args) throws Exception{
         System.out.println("FTP folder: " + ftp.toString());
-        new File(ftp.toString()).mkdirs();
+        new File(ftp.toString()).mkdirs();  //make ftp directory if it does not already exist
         
         // USER=1, ACCT=2, PASS=3, TYPE=4, LIST=5, CDIR=6, KILL=7, NAME=8, DONE=9, RETR=10, STOR=11
         sftpCommands = new String[]{"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL",
@@ -45,10 +56,10 @@ public class SFTPClient {
             
             try{
                 socket = new Socket(ip, port);
-
+                //Set ASCII streams
                 outToServer = new DataOutputStream(socket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
+                //Set Binary streams
                 binToServer = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
                 binFromServer = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
                 
@@ -56,7 +67,7 @@ public class SFTPClient {
                 System.out.println(readFromServer());
                 
                 while(running){
-                    System.out.print("> ");
+                    System.out.print("> ");     //ready for command
                     String[] commandArgs = selectMode();
                     if (commandArgs != null) enterMode(commandArgs);
                 } 
@@ -70,30 +81,29 @@ public class SFTPClient {
         }
     }
     
+    //selectMode reads client commands and checks if it is valid
     public static String[] selectMode() throws Exception{
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         String input = br.readLine();
         String[] commands = input.split(" ");
-        boolean noCommand = false;
         
         for (String sftpCommand : sftpCommands){
             if (commands[0].equals(sftpCommand)){
                 if (DEBUG) System.out.println(sftpCommand);
                 mode = sftpCommand;
-                noCommand = true;
                 return commands;
             }
         }
-        
-        if (!noCommand){
-            System.out.println("INPUT ERROR: Command not recognised");
-            System.out.println("Commands available: "
-                    + "\"USER\", \"ACCT\", \"PASS\", \"TYPE\", \"LIST\","
-                    + "\"CDIR\", \"KILL\", \"NAME\", \"DONE\", \"RETR\", \"STOR\"");
-        }
+        //if command not found
+        System.out.println("INPUT ERROR: Command not recognised");
+        System.out.println("Commands available: "
+                + "\"USER\", \"ACCT\", \"PASS\", \"TYPE\", \"LIST\","
+                + "\"CDIR\", \"KILL\", \"NAME\", \"DONE\", \"RETR\", \"STOR\"");
+
         return null;
     }
     
+    //enterMode detects command and routes it to the appropiate function
     public static void enterMode(String[] commandArgs) throws Exception{
         //"USER", "ACCT", "PASS", "TYPE", "LIST", "CDIR", "KILL", "NAME", "DONE", "RETR", "STOR"
         if (null != mode)
@@ -153,6 +163,7 @@ public class SFTPClient {
         }
     }
     
+    //authentication commands
     public static void auth(String mode, String[] commandArgs) throws Exception{
         if (commandArgs.length != 2){
             String argsError = null;
@@ -180,6 +191,7 @@ public class SFTPClient {
         }
     }
     
+    // TYPE command
     public static void type(String[] commandArgs) throws Exception{
         if (commandArgs.length == 2){                        
             sendToServer("TYPE " + commandArgs[1]);
@@ -199,6 +211,7 @@ public class SFTPClient {
         }   
     }
     
+    //LIST command
     public static void list(String[] commandArgs) throws Exception {
         if ((commandArgs.length >= 2) && ("F".equals(commandArgs[1]) || "V".equals(commandArgs[1]))){ 
             if (commandArgs.length == 2){    
@@ -216,6 +229,7 @@ public class SFTPClient {
         }
     }
     
+    //CDIR command
     public static void cdir(String[] commandArgs) throws Exception {
         String resp = "";
             for (int i = 1; i < commandArgs.length; i++){
@@ -225,6 +239,7 @@ public class SFTPClient {
         System.out.println(readFromServer());
     }
     
+    //KILL command
     public static void kill(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
             System.out.println("ARG ERROR: Not enough arguments. KILL <filename> required");
@@ -238,6 +253,7 @@ public class SFTPClient {
         }  
     }
     
+    //NAME command
     public static void name(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
             System.out.println("ARG ERROR: Not enough arguments. NAME <current-filename> required");
@@ -251,6 +267,7 @@ public class SFTPClient {
         }
     }
     
+    //TOBE command
     public static void tobe(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
             System.out.println("ARG ERROR: Not enough arguments. TOBE <new-filename> required");
@@ -264,6 +281,7 @@ public class SFTPClient {
         }
     }
     
+    //RETR command
     public static void retr(String[] commandArgs) throws Exception {
         if (commandArgs.length < 2){
             System.out.println("ARG ERROR: Not enough arguments. RETR <filename> required");
@@ -286,7 +304,8 @@ public class SFTPClient {
             }
         }
     }
-        
+    
+    //SEND command
     public static void send(){
         if (!retr){
             System.out.println("Nothing to send.");
@@ -299,7 +318,7 @@ public class SFTPClient {
             if ("A".equals(sendMode)) {
                 try (BufferedOutputStream bufferedStream = new BufferedOutputStream(new FileOutputStream(file, false))) {
                     for (int i = 0; i < fileSize; i++) {
-                        if (new Date().getTime() >= timeout){
+                        if (new Date().getTime() >= timeout){   //close stream if file transfer times out
                             System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             return;
                         }
@@ -317,7 +336,7 @@ public class SFTPClient {
                     byte[] bytes = new byte[(int) fileSize];
                     while (i < fileSize) {
                         e = binFromServer.read(bytes);
-                        if (new Date().getTime() >= timeout){
+                        if (new Date().getTime() >= timeout){   //close stream if file transfer times out
                             System.out.println("Transfer taking too long. Timed out after " + (fileSize/8 + 8)/60000 + " seconds.");
                             return;
                         }
@@ -339,11 +358,13 @@ public class SFTPClient {
         } 
     }
     
+    //STOP Retrieval command
     public static void stopRetr(){
         sendToServer("STOP ");
         System.out.println(readFromServer());
     }
     
+    //STOR command 
     public static void stor(String[] commandArgs) throws Exception {
         if (commandArgs.length < 3){
             System.out.println("ARG ERROR: Not enough arguments. STOR { NEW | OLD | APP } <new-filename> required");
@@ -354,12 +375,12 @@ public class SFTPClient {
             }
             
             File file = new File(ftp.getPath() + "/" + resp);
-
+            
+            //Check file against current mode
             if (isBinary(file) && "A".equals(sendMode)){
-                //System.out.println("-File is Binary. Switching to TYPE B");
                 sendToServer("TYPE B");
                 String serverResponse = readFromServer();
-                if ("+".equals(serverResponse.substring(0, 1))){
+                if ("+".equals(serverResponse.substring(0, 1))){    //successful change response from server
                     sendMode = "B";
                     System.out.println(serverResponse);
                 } else {
@@ -371,7 +392,7 @@ public class SFTPClient {
                 System.out.println("-File is ASCII. Current TYPE is B or C. Please switch to A");
                 sendToServer("TYPE A");
                 String serverResponse = readFromServer();
-                if ("+".equals(serverResponse.substring(0, 1))){
+                if ("+".equals(serverResponse.substring(0, 1))){    //successful change response from server
                     sendMode = "A";
                     System.out.println(serverResponse);
                 } else {
@@ -386,7 +407,7 @@ public class SFTPClient {
             
             if ("+".equals(serverResponse.substring(0,1))){
                 System.out.println(serverResponse + ". Sending SIZE " + file.length());
-                sendToServer("SIZE " + file.length());
+                sendToServer("SIZE " + file.length());  //send size
                 serverResponse = readFromServer();
                 System.out.println(serverResponse);
                 
@@ -396,9 +417,7 @@ public class SFTPClient {
                     byte[] bytes = new byte[(int) file.length()];
 
                     try {
-                        // System.out.println(sendMode);
-                        if ("A".equals(sendMode)){
-                            // Read and send by byte
+                        if ("A".equals(sendMode)){ //ASCII
                             try (BufferedInputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
                                 outToServer.flush();
                                 // Read and send by byte
@@ -411,7 +430,7 @@ public class SFTPClient {
                             } catch (IOException e){
                                 socket.close();
                             }
-                        } else {
+                        } else {    //Binary
                             try (FileInputStream fileStream = new FileInputStream(file)) {
                                 binToServer.flush();
                                 int e;
@@ -438,7 +457,8 @@ public class SFTPClient {
             }
         }
     }
-
+    
+    //isBinary compares the amount of ASCII character to non-ASCII characters to determine if the file is binary
     private static boolean isBinary(File file){
         FileInputStream in;
         try {
@@ -465,13 +485,11 @@ public class SFTPClient {
 
             return 100 * other / (ascii + other) > 95;
         } catch (FileNotFoundException ex) {
-            //Logger.getLogger(Instance.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException io){
-            
-        }
+        } catch (IOException io){}
         return false;
     }
     
+    //readFromServer reads ASCII messages from server
     private static String readFromServer() {
         String text = "";
         int c = 0;
@@ -479,26 +497,31 @@ public class SFTPClient {
         while (true){
             try {
                 c = inFromServer.read();
-                if ((char) c == '\0' && text.length() > 0) {
-                    break;
-                }
             } catch (IOException lineErr) {
-                // catch empty strings, but do nothing
+                try {   // if IOError close socket as client is already closed
+                    socket.close();
+                    running = false;
+                    System.out.println("Connection to server has been closed");
+                } catch (IOException ex) {}
             }
-            if (c != '\0') text = text + (char) c;
+            if ((char) c == '\0' && text.length() > 0) break;
+            if ((char) c != '\0') text = text + (char) c;
         }
         if (DEBUG) System.out.println("IN: " + text);
         return text;
     }
     
+    //sendToServer sends ASCII messages to server
     private static void sendToServer(String text) {
         try {
             if (DEBUG) System.out.println("OUT: " + text + "\0");
             outToServer.writeBytes(text + "\0");
         } catch (IOException i) {
-            try {
+            try {   // if IOError close socket as client is already closed
                 socket.close();
-            } catch (IOException e){ }
+                running = false;
+                System.out.println("Connection to server has been closed");
+            } catch (IOException ex) {}
         }
     }
 }

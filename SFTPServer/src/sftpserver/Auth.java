@@ -1,9 +1,6 @@
 package sftpserver;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.Arrays;
 
 /*
  * Auth.txt File Format
@@ -15,8 +12,8 @@ import java.util.Arrays;
  */
 
 /**
- *  TO DO: USER CLASS
- * @author tofutaco
+ * Auth authenticates users
+ * @author Eugene Fong (efon103)
  */
 public class Auth {
     
@@ -25,15 +22,16 @@ public class Auth {
     protected static Boolean accountVerification = false;
     protected static Boolean passwordVerification = false;
     
-    protected static String user; // userVerification, account, password
+    protected static String user;
     protected static String account = "";
     protected static String[] accounts;
-    protected static String password; // userVerification, account, password
+    protected static String password;
 
     public Auth(String authFile){
-        Auth.authFile = authFile;
+        Auth.authFile = authFile;   //locate authentication file
     }
     
+    // USER {username} Command
     public String user(String userText) throws Exception{
         File file = new File("auth.txt");
         BufferedReader reader = null;
@@ -46,15 +44,14 @@ public class Auth {
         
         try {
             reader = new BufferedReader(new FileReader(file));
-            
+            // Scan file for credentials
             while ((text = reader.readLine()) != null) {
                 String temp = text;
-                
                 String[] userDetails = temp.split(" ", -1);
                 user = userDetails[0];
                 accounts = userDetails[1].split("\\|");
                 password = userDetails[2];
-
+                //if username matches, the accounts and passwords are recorded and loop is broken
                 if (user.equals(userText)){
                     userVerification = true;
                     break;
@@ -73,17 +70,17 @@ public class Auth {
                 if (SFTPServer.DEBUG) System.out.println("IO Exception on file close");
             }
         }
-                
+        //if no user found, return invalid user string
         if (!userVerification){
             return "-Invalid user-id, try again";
         } else {
             if ("".equals(password)){
-                passwordVerification = true;
+                passwordVerification = true;    //if there is no password
             }
             if (accounts.length <= 1){
-                accountVerification = true;
+                accountVerification = true;     //if there is no account
             }
-                
+            //output messages corresponding to status
             if (passwordVerification && accountVerification){
                 response = "!" + user + " logged in";
             } else if (passwordVerification && !accountVerification){
@@ -97,64 +94,62 @@ public class Auth {
         return response;
     }
     
+    //ACCT {account} Command
     public String acct(String accountText) throws Exception {
-            
+            //if there is no account
             if ("".equals(accounts[0]) && !passwordVerification){
                 accountVerification = true;
-                return (!Instance.cdirRestricted) ? ("+Account valid, send password") : ("+account ok, send password");
+                return (!Instance.cdirRestricted) ? ("+Account valid, send password") : ("+account ok, send password"); //If CDIR is flagged output different message
             }
-
+            //Search accounts for valid account
             for (String account: accounts){
                 if (account.equals(accountText)){
                     Auth.account = account;
                     accountVerification = true;
                     if (passwordVerification){
-                        if (Instance.cdirRestricted) {
+                        if (Instance.cdirRestricted) { //if CDIR was flagged change directory
                             Instance.directory = Instance.restrictedDirectory;
                             Instance.cdirRestricted = false;
                             return "!Changed working dir to " + Instance.restrictedDirectory;
                         } else {
-                            return ("!Account valid, logged-in");
+                            return ("!Account valid, logged-in"); //if password not required log in
                         }
-                    } else {
+                    } else { //If CDIR is flagged output different message and if password required
                         return (!Instance.cdirRestricted) ? ("+Account valid, send password") : ("+account ok, send password");
                     }
                 }
             }
-            return (!Instance.cdirRestricted) ? ("-Invalid account, try again") : ("-invalid account");
+            return (!Instance.cdirRestricted) ? ("-Invalid account, try again") : ("-invalid account"); // invalid account
     }
     
-     public String pass(String passText) throws Exception {
-         
+    // PASS {password} Command
+    public String pass(String passText) throws Exception {
+        //if there is no password
         if ("".equals(password) && !accountVerification){
             passwordVerification = true;
             return (!Instance.cdirRestricted) ? ("+Send account") : ("+password ok, send account");
         }
          
-        //passwordVerification = false;
         if (password.equals(passText)){
             passwordVerification = true;
             if (accountVerification){
                 if (Instance.cdirRestricted) {
                     Instance.directory = Instance.restrictedDirectory;
                     Instance.cdirRestricted = false;
-                    return "!Changed working dir to " + Instance.restrictedDirectory;
+                    return "!Changed working dir to " + Instance.restrictedDirectory; //if CDIR was flagged change directory
                 } else {
-                    return ("!Account valid, logged-in");
+                    return ("!Account valid, logged-in"); //if password not required log in
                 }
-            } else {
+            } else { //If CDIR is flagged output different message and if account required
                 return (!Instance.cdirRestricted) ? ("+Send account") : (" +password ok, send account");
             }
         } else {
-            return (!Instance.cdirRestricted) ? ("-Wrong password, try again") : ("-invalid password");
+            return (!Instance.cdirRestricted) ? ("-Wrong password, try again") : ("-invalid password"); // invalid password
         }
     }
      
+    // verified() is a helper function to check if user has met all checks
     public boolean verified(){
         return userVerification && accountVerification && passwordVerification;
-    }
-    
-    public String getIP(Socket socket){
-        return (((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress()).toString().replace("/","");
     }
 }
