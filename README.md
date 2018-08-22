@@ -110,7 +110,7 @@ There are four users:
 * USER and ACC, with username ```ONLYACC``` and accounts ```acc1``` or ```acc2```
 * USER, ACC and PASS, with username ```ALL```, accounts ```acc1``` or ```acc2``` or ```acc3```, and password ```pw2```
 
-**NOTE:** to access the included ```Restricted Folder```, it will need to match one of the account/password combinations listed.
+**NOTE:** to access the included Restricted Folder, it will need to match one of the account/password combinations listed.
 In the included example, the ```.restrict``` file contains:
 ```
 racct|acc2 pw2
@@ -122,7 +122,6 @@ Thus, there are two pairs valid, ```racct``` and ```acc2```, with a common passw
 
 ##### **Prefix Symbol Guide**
 ```!```, ```+``` and ```-``` lines are server responses (with the exception of file size for ```RETR```).
-
 ```>``` indicates a command by the client.
 
 ### ***USER***, ***ACCT*** and ***PASS*** Commands
@@ -702,6 +701,8 @@ Transfer taking too long. Timed out after 5 seconds.
 
 ### ***STOR*** Command
 
+**Note:** Client automatically changes file type and size according to server response. If a third-party client does not support automatic sending, the server treats the commands like manual commands.
+
 #### ****Default Examples****
 
 All ```STOR``` commands support automatic type swtiching. The client checks the file type and if the current type does not match, it will automatically send a ```TYPE``` request. If the type is changed successfully, it will send the file. If the type fails to change, the ```STOR``` command is cancelled.
@@ -863,13 +864,14 @@ Client connected to localhost port 11510
 
 #### **Other Cases**
 
-***The file has taken too long to transfer***: If the file takes too long to transfer, the process will time out and the transfer will be cancelled. This timeout is calculated by ```(filesize/8 + 8)/60``` seconds.
+***No file found***: If file is not found on the client, it will produce this error and cancel the STOR operation.
 
 ```
-> SEND
-Transfer taking too long. Timed out after 5 seconds.
->
+> STOR NEW filethatdoesntexist.txt
+No file 'filethatdoesntexist.txt' found in C:\Users\tofutaco\Documents\COMPSYS725\java-sftp\SFTPClient\ftp
 ```
+
+***The file has taken too long to transfer***: If the file takes too long to transfer, the process will time out and the transfer will be cancelled. This timeout is calculated by ```(filesize/8 + 8)/60``` seconds.
 
 ## Use Cases
 

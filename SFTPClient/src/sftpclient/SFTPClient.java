@@ -375,6 +375,10 @@ public class SFTPClient {
             }
             
             File file = new File(ftp.getPath() + "/" + resp);
+            if (!file.isFile()){
+                System.out.println("No file '" + resp + "' found in " + ftp.getPath().toString());
+                return;
+            }
             
             //Check file against current mode
             if (isBinary(file) && "A".equals(sendMode)){
