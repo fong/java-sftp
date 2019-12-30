@@ -23,7 +23,7 @@ public class Instance extends Thread{
     String mode;                //Client command
     String sendMode = "A";      //File Type, A=ASCII, B=Binary, C=Continuous
     
-    // Directory variables
+    // Directory variables invoke
     private static final File root = FileSystems.getDefault().getPath("ftp/").toFile().getAbsoluteFile();
     public static String restrictedDirectory = "/";
     public static String directory = "";
